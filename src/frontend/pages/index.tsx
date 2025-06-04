@@ -673,34 +673,57 @@ export default function KnowledgeGraph() {
           {/* Graph History Timeline */}
           {visibleGraphs.length > 1 && (
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-2 overflow-x-auto">
-                {visibleGraphs.map((graph, index) => (
-                  <div key={graph.id} className="flex items-center space-x-1">
-                    <button
-                      onClick={() => goToGraphAtIndex(index)}
-                      className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        index === currentGraphIndex
-                          ? 'bg-indigo-600 text-white shadow-md'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                      }`}
-                      title={`Go to ${getGraphTitle(graph)}`}
+              <div className="relative">
+                {/* Scroll container with improved spacing and behavior */}
+                <div 
+                  className="flex items-center gap-3 overflow-x-auto pb-2 scroll-smooth"
+                  style={{
+                    scrollSnapType: 'x mandatory',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#cbd5e1 #f1f5f9'
+                  }}
+                >
+                  {visibleGraphs.map((graph, index) => (
+                    <div 
+                      key={graph.id} 
+                      className="flex items-center gap-2 flex-shrink-0"
+                      style={{ scrollSnapAlign: 'start' }}
                     >
-                      {getGraphTitle(graph)}
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteConfirm(graph.id)}
-                      className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                      title="Remove graph"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={() => goToGraphAtIndex(index)}
+                        className={`min-w-[120px] max-w-[200px] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 truncate ${
+                          index === currentGraphIndex
+                            ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300'
+                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                        }`}
+                        title={`Go to ${getGraphTitle(graph)}`}
+                      >
+                        {getGraphTitle(graph)}
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(graph.id)}
+                        className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group"
+                        title="Remove graph"
+                      >
+                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Scroll indicators - left fade */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10"></div>
+                
+                {/* Scroll indicators - right fade */}
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div>
               </div>
-              <div className="mt-2 text-xs text-gray-500">
-                Use ← → arrow keys to navigate • Delete key to remove current graph • Click × to remove specific graphs
+              <div className="mt-3 text-xs text-gray-500 flex items-center justify-between">
+                <span>Use ← → arrow keys to navigate • Delete key to remove current graph • Click × to remove specific graphs</span>
+                {visibleGraphs.length > 3 && (
+                  <span className="text-indigo-600 font-medium">← Scroll to see more →</span>
+                )}
               </div>
             </div>
           )}
