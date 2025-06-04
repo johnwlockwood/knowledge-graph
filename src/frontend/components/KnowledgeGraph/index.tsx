@@ -9,10 +9,12 @@ import { GraphVisualization } from './GraphVisualization';
 import { Toast } from './UI/Toast';
 import { DeleteConfirmModal } from './UI/DeleteConfirmModal';
 import { EmptyState } from './UI/EmptyState';
+import { ShareModal } from './UI/ShareModal';
 
 export default function KnowledgeGraph() {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const {
     allGraphs,
@@ -23,6 +25,7 @@ export default function KnowledgeGraph() {
     goToNextGraph,
     goToGraphAtIndex,
     addGraph,
+    importGraphs,
     removeGraph
   } = useGraphData();
 
@@ -69,9 +72,24 @@ export default function KnowledgeGraph() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-8">
-          Knowledge Graph Generator
-        </h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex-1"></div>
+          <h1 className="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+            Knowledge Graph Generator
+          </h1>
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
+              title="Share or import knowledge graphs"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+              </svg>
+              <span>Share</span>
+            </button>
+          </div>
+        </div>
         
         {/* Toast Notifications */}
         {toast && (
@@ -88,6 +106,16 @@ export default function KnowledgeGraph() {
           graphTitle={deleteConfirmTitle}
           onConfirm={handleConfirmDelete}
           onCancel={handleCancelDelete}
+        />
+
+        {/* Share Modal */}
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          currentGraph={currentGraph}
+          allGraphs={allGraphs}
+          onImportGraphs={importGraphs}
+          onToast={handleToast}
         />
         
         {/* Graph Generator */}
