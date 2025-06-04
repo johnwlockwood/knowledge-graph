@@ -32,6 +32,14 @@ function getContrastColor(hexColor: string): string {
   return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }
 
+// Function to truncate edge labels for better readability
+function truncateLabel(label: string, maxLength: number = 20): string {
+  return label.length > maxLength ? label.substring(0, maxLength) + "..." : label;
+}
+
+// Store original labels for hover functionality
+const originalLabels = new Map<string, string>();
+
 const INITIAL_DATA = {
   nodes: [
     { id: 1, label: "Underpants Gnomes", color: "#2D3748" },
@@ -40,13 +48,35 @@ const INITIAL_DATA = {
     { id: 4, label: "Phase 3: Profit", color: "#38A169" }
   ],
   edges: [
-    { source: 1, target: 2, label: "Step 1", color: "black" },
-    { source: 2, target: 3, label: "Step 2", color: "black" },
-    { source: 3, target: 4, label: "Step 3", color: "black" }
+    { source: 1, target: 2, label: "Mysterious business plan execution", color: "black" },
+    { source: 2, target: 3, label: "Unknown intermediate step", color: "black" },
+    { source: 3, target: 4, label: "Magical profit generation", color: "black" }
   ]
 };
 
-function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
+function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }, edgesDataSetRef: React.MutableRefObject<DataSet<object> | null>) {
+  // Clear previous original labels
+  originalLabels.clear();
+  
+  const edgesDataSet = new DataSet(data.edges.map(edge => {
+    const edgeId = `${edge.source}-${edge.target}-${edge.label}`;
+    const truncatedLabel = truncateLabel(edge.label);
+    
+    // Store original label for hover functionality
+    originalLabels.set(edgeId, edge.label);
+    
+    return {
+      id: edgeId,
+      from: edge.source,
+      to: edge.target,
+      label: truncatedLabel,
+      color: edge.color
+    };
+  }));
+  
+  // Store reference to edges DataSet
+  edgesDataSetRef.current = edgesDataSet;
+  
   return {
     nodes: new DataSet(data.nodes.map(node => ({
       id: node.id,
@@ -64,13 +94,7 @@ function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
         color: getContrastColor(node.color)
       }
     }))),
-    edges: new DataSet(data.edges.map(edge => ({
-      id: `${edge.source}-${edge.target}-${edge.label}`,
-      from: edge.source,
-      to: edge.target,
-      label: edge.label,
-      color: edge.color
-    })))
+    edges: edgesDataSet
   };
 }
 
@@ -81,6 +105,7 @@ export default function KnowledgeGraph() {
   const [graphData, setGraphData] = useState(INITIAL_DATA);
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const edgesDataSetRef = useRef<DataSet<object> | null>(null);
 
   useEffect(() => {
     // Initialize network when component mounts
@@ -99,7 +124,7 @@ export default function KnowledgeGraph() {
 
       networkRef.current = new Network(
         containerRef.current, 
-        mapGraphData(graphData), 
+        mapGraphData(graphData, edgesDataSetRef), 
         {
           interaction: { hover: true },
           nodes: {
@@ -145,6 +170,75 @@ export default function KnowledgeGraph() {
   }
         }
       );
+
+      // Add hover event listeners for enhanced edge label visibility
+      networkRef.current.on("hoverEdge", (params) => {
+        const edgeId = params.edge;
+        const originalLabel = originalLabels.get(edgeId);
+        
+        if (originalLabel && edgesDataSetRef.current) {
+          // Update the edge with enhanced styling and full label
+          edgesDataSetRef.current.update({
+            id: edgeId,
+            label: originalLabel,
+            font: {
+              size: 28,
+              face: "Inter, Arial, sans-serif",
+              color: "#1F2937",
+              strokeWidth: 4,
+              strokeColor: "#FFFFFF",
+              align: "middle",
+              background: "rgba(255,255,255,0.98)",
+              border: "4px solid #4F46E5",
+              borderRadius: 10
+            },
+            // Make the edge itself more prominent
+            width: 5,
+            color: {
+              color: "#4F46E5",
+              highlight: "#4F46E5",
+              hover: "#4F46E5"
+            },
+            // Add shadow for depth and prominence
+            shadow: {
+              enabled: true,
+              color: 'rgba(79, 70, 229, 0.5)',
+              size: 15,
+              x: 2,
+              y: 2
+            }
+          });
+        }
+      });
+
+      networkRef.current.on("blurEdge", (params) => {
+        const edgeId = params.edge;
+        const originalLabel = originalLabels.get(edgeId);
+        
+        if (originalLabel && edgesDataSetRef.current) {
+          // Restore the edge to its truncated state with original styling
+          edgesDataSetRef.current.update({
+            id: edgeId,
+            label: truncateLabel(originalLabel),
+            font: {
+              size: 20,
+              face: "Inter, Arial, sans-serif",
+              color: "#374151",
+              strokeWidth: 1,
+              strokeColor: "#000000",
+              align: "middle",
+              background: "rgba(255,255,255,0.7)"
+            },
+            // Restore original edge styling
+            width: 2,
+            color: "black",
+            shadow: {
+              enabled: false
+            }
+          });
+        }
+      });
+
     };
 
     initializeNetwork();
@@ -190,6 +284,12 @@ export default function KnowledgeGraph() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      generateGraph();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -203,6 +303,7 @@ export default function KnowledgeGraph() {
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Enter a subject to explore..."
               className="flex-grow px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
