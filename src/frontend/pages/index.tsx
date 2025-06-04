@@ -15,6 +15,36 @@ interface ApiEdge {
   color: string;
 }
 
+const INITIAL_DATA = {
+  nodes: [
+    { id: 1, label: "Underpants Gnomes", color: "#FF5733" },
+    { id: 2, label: "Phase 1: Collect Underpants", color: "#FFD700" },
+    { id: 3, label: "Phase 2: ?", color: "#FFD700" },
+    { id: 4, label: "Phase 3: Profit", color: "#FFD700" }
+  ],
+  edges: [
+    { source: 1, target: 2, label: "Step 1", color: "black" },
+    { source: 2, target: 3, label: "Step 2", color: "black" },
+    { source: 3, target: 4, label: "Step 3", color: "black" }
+  ]
+};
+
+function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
+  return {
+    nodes: new DataSet(data.nodes.map(node => ({
+      id: node.id,
+      label: node.label,
+      color: node.color
+    }))),
+    edges: new DataSet(data.edges.map(edge => ({
+      id: `${edge.source}-${edge.target}-${edge.label}`,
+      from: edge.source,
+      to: edge.target,
+      label: edge.label,
+      color: edge.color
+    })))
+  };
+}
 
 export default function KnowledgeGraph() {
   const [subject, setSubject] = useState('');
@@ -57,7 +87,7 @@ export default function KnowledgeGraph() {
               face: "Inter",
               color: "#374151",
               strokeWidth: 1,  // Added stroke for better contrast
-              strokeColor: "#ffffff",
+              strokeColor: "#000000",
               align: "middle",
               background: "rgba(255,255,255,0.7)"  // Background for readability
             }
@@ -72,6 +102,10 @@ export default function KnowledgeGraph() {
   }
         }
       );
+
+      // Set initial graph data
+      const mappedData = mapGraphData(INITIAL_DATA);
+      networkRef.current.setData(mappedData);
     }
 
     // Clean up on unmount
@@ -104,25 +138,7 @@ export default function KnowledgeGraph() {
       const data = await response.json();
       
       // Map nodes for Vis.js
-      const nodes = new DataSet<{id: number, label: string, color: string}>(
-        data.nodes.map((node: ApiNode) => ({
-          id: node.id,
-          label: node.label,
-          color: node.color,
-        }))
-      );
-      
-      // Map edges for Vis.js
-      const edges = new DataSet<{id: string, from: number, to: number, label: string, color: string}>(
-        data.edges.map((edge: ApiEdge) => ({
-          id: `${edge.source}-${edge.target}-${edge.label}`,
-          from: edge.source,
-          to: edge.target,
-          label: edge.label,
-          color: edge.color,
-        }))
-      );
-      
+      const { nodes, edges } = mapGraphData(data);
       if (networkRef.current) {
         networkRef.current.setData({ nodes, edges });
       }
