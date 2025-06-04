@@ -54,6 +54,64 @@ const INITIAL_DATA = {
   ]
 };
 
+const QUANTUM_PHYSICS_GRAPH = {
+  "nodes": [
+      {
+          "id": 1,
+          "label": "Quantum Mechanics",
+          "color": "#ff7f0e"
+      },
+      {
+          "id": 2,
+          "label": "Wave-Particle Duality",
+          "color": "#2ca02c"
+      },
+      {
+          "id": 3,
+          "label": "Quantum Superposition",
+          "color": "#1f77b4"
+      },
+      {
+          "id": 4,
+          "label": "Quantum Entanglement",
+          "color": "#d62728"
+      },
+      {
+          "id": 5,
+          "label": "Heisenberg Uncertainty Principle",
+          "color": "#9467bd"
+      }
+  ],
+  "edges": [
+      {
+          "source": 1,
+          "target": 2,
+          "label": "Describes",
+          "color": "black"
+      },
+      {
+          "source": 1,
+          "target": 3,
+          "label": "Fundamental Concept",
+          "color": "black"
+      },
+      {
+          "source": 1,
+          "target": 4,
+          "label": "Phenomenon",
+          "color": "black"
+      },
+      {
+          "source": 1,
+          "target": 5,
+          "label": "Fundamental Principle",
+          "color": "black"
+      }
+  ]
+};
+
+const GRAPH_HISTORY = [INITIAL_DATA, QUANTUM_PHYSICS_GRAPH];
+
 function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }, edgesDataSetRef: React.MutableRefObject<DataSet<object> | null>) {
   // Clear previous original labels
   originalLabels.clear();
@@ -103,9 +161,63 @@ export default function KnowledgeGraph() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [graphData, setGraphData] = useState(INITIAL_DATA);
+  const [graphHistory, setGraphHistory] = useState(GRAPH_HISTORY);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const edgesDataSetRef = useRef<DataSet<object> | null>(null);
+  const [hoveredLabel, setHoveredLabel] = useState<{text: string, x: number, y: number} | null>(null);
+
+  // Navigation functions
+  const goToPreviousGraph = () => {
+    if (currentHistoryIndex > 0) {
+      const newIndex = currentHistoryIndex - 1;
+      setCurrentHistoryIndex(newIndex);
+      setGraphData(graphHistory[newIndex]);
+    }
+  };
+
+  const goToNextGraph = () => {
+    if (currentHistoryIndex < graphHistory.length - 1) {
+      const newIndex = currentHistoryIndex + 1;
+      setCurrentHistoryIndex(newIndex);
+      setGraphData(graphHistory[newIndex]);
+    }
+  };
+
+  const goToGraphAtIndex = (index: number) => {
+    if (index >= 0 && index < graphHistory.length) {
+      setCurrentHistoryIndex(index);
+      setGraphData(graphHistory[index]);
+    }
+  };
+
+  // Get graph title for display
+  const getGraphTitle = (graph: typeof INITIAL_DATA, index: number) => {
+    // Use the first node's label as the graph title
+    if (graph.nodes && graph.nodes.length > 0) {
+      return graph.nodes[0].label;
+    }
+    return `Graph ${index + 1}`;
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return;
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goToPreviousGraph();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goToNextGraph();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentHistoryIndex, graphHistory.length]);
 
   useEffect(() => {
     // Initialize network when component mounts
@@ -171,41 +283,50 @@ export default function KnowledgeGraph() {
         }
       );
 
-      // Add hover event listeners for enhanced edge label visibility
+      // Add hover event listeners for custom overlay label
       networkRef.current.on("hoverEdge", (params) => {
         const edgeId = params.edge;
         const originalLabel = originalLabels.get(edgeId);
         
-        if (originalLabel && edgesDataSetRef.current) {
-          // Update the edge with enhanced styling and full label
+        if (originalLabel && networkRef.current && containerRef.current && edgesDataSetRef.current) {
+          // Get the edge data
+          const edgeData = edgesDataSetRef.current.get(edgeId);
+          
+          if (edgeData && typeof edgeData === 'object' && 'from' in edgeData && 'to' in edgeData) {
+            // Get node positions
+            const fromNodeId = (edgeData as any).from;
+            const toNodeId = (edgeData as any).to;
+            const fromNode = networkRef.current.getPositions([fromNodeId]);
+            const toNode = networkRef.current.getPositions([toNodeId]);
+            
+            if (fromNode && toNode) {
+              const fromPos = Object.values(fromNode)[0] as {x: number, y: number};
+              const toPos = Object.values(toNode)[0] as {x: number, y: number};
+              
+              const centerX = (fromPos.x + toPos.x) / 2;
+              const centerY = (fromPos.y + toPos.y) / 2;
+              
+              // Convert network coordinates to DOM coordinates
+              const domPosition = networkRef.current.canvasToDOM({x: centerX, y: centerY});
+              const containerRect = containerRef.current.getBoundingClientRect();
+              
+              // Set the floating label with position relative to the container
+              setHoveredLabel({
+                text: originalLabel,
+                x: domPosition.x,
+                y: domPosition.y - 20 // Offset slightly above the edge
+              });
+            }
+          }
+          
+          // Enhance the edge styling
           edgesDataSetRef.current.update({
             id: edgeId,
-            label: originalLabel,
-            font: {
-              size: 28,
-              face: "Inter, Arial, sans-serif",
-              color: "#1F2937",
-              strokeWidth: 4,
-              strokeColor: "#FFFFFF",
-              align: "middle",
-              background: "rgba(255,255,255,0.98)",
-              border: "4px solid #4F46E5",
-              borderRadius: 10
-            },
-            // Make the edge itself more prominent
-            width: 5,
+            width: 4,
             color: {
               color: "#4F46E5",
               highlight: "#4F46E5",
               hover: "#4F46E5"
-            },
-            // Add shadow for depth and prominence
-            shadow: {
-              enabled: true,
-              color: 'rgba(79, 70, 229, 0.5)',
-              size: 15,
-              x: 2,
-              y: 2
             }
           });
         }
@@ -213,28 +334,16 @@ export default function KnowledgeGraph() {
 
       networkRef.current.on("blurEdge", (params) => {
         const edgeId = params.edge;
-        const originalLabel = originalLabels.get(edgeId);
         
-        if (originalLabel && edgesDataSetRef.current) {
-          // Restore the edge to its truncated state with original styling
+        // Hide the floating label
+        setHoveredLabel(null);
+        
+        // Restore original edge styling
+        if (edgesDataSetRef.current) {
           edgesDataSetRef.current.update({
             id: edgeId,
-            label: truncateLabel(originalLabel),
-            font: {
-              size: 20,
-              face: "Inter, Arial, sans-serif",
-              color: "#374151",
-              strokeWidth: 1,
-              strokeColor: "#000000",
-              align: "middle",
-              background: "rgba(255,255,255,0.7)"
-            },
-            // Restore original edge styling
             width: 2,
-            color: "black",
-            shadow: {
-              enabled: false
-            }
+            color: "black"
           });
         }
       });
@@ -272,7 +381,10 @@ export default function KnowledgeGraph() {
       
       const data = await response.json();
       
-      // Store the data in state
+      // Add to history and update current graph
+      const newHistory = [...graphHistory, data];
+      setGraphHistory(newHistory);
+      setCurrentHistoryIndex(newHistory.length - 1);
       setGraphData(data);
       
       // Network will update automatically due to the useEffect dependency
@@ -332,11 +444,97 @@ export default function KnowledgeGraph() {
         </div>
         
         <div className="bg-white/80 backdrop-blur-lg shadow-lg rounded-xl p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Knowledge Graph</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Knowledge Graph</h2>
+            
+            {/* Navigation Controls */}
+            {graphHistory.length > 1 && (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={goToPreviousGraph}
+                    disabled={currentHistoryIndex === 0}
+                    className="p-2 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Previous graph (←)"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  <span className="text-sm text-gray-600 font-medium">
+                    {currentHistoryIndex + 1} of {graphHistory.length}
+                  </span>
+                  
+                  <button
+                    onClick={goToNextGraph}
+                    disabled={currentHistoryIndex === graphHistory.length - 1}
+                    className="p-2 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Next graph (→)"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Graph History Timeline */}
+          {graphHistory.length > 1 && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-2 overflow-x-auto">
+                {graphHistory.map((graph, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToGraphAtIndex(index)}
+                    className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      index === currentHistoryIndex
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                    title={`Go to ${getGraphTitle(graph, index)}`}
+                  >
+                    {getGraphTitle(graph, index)}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                Use ← → arrow keys to navigate • Click timeline items to jump to specific graphs
+              </div>
+            </div>
+          )}
+
           <div 
             ref={containerRef} 
-            className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl"
-          ></div>
+            className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl relative"
+          >
+            {/* Floating label overlay */}
+            {hoveredLabel && (
+              <div
+                className="absolute z-50 pointer-events-none"
+                style={{
+                  left: hoveredLabel.x,
+                  top: hoveredLabel.y,
+                  transform: 'translate(-50%, -100%)'
+                }}
+              >
+                <div className="bg-white border-4 border-indigo-500 rounded-lg px-4 py-2 shadow-lg max-w-xs">
+                  <div className="text-sm font-semibold text-gray-900 text-center">
+                    {hoveredLabel.text}
+                  </div>
+                  {/* Arrow pointing down */}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2">
+                    <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-indigo-500"></div>
+                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+                      <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
