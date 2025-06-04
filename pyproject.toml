@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "knowledge_graph_app"
 version = "0.1.0"
 description = "Knowledge Graph Application"
-authors = [{name = "John Doe", email = "john@example.com"}]
+authors = [{name = "John Lockwood", email = "johnwlockwood@gmail.com"}]
 dependencies = [
     "fastapi",
     "uvicorn",
