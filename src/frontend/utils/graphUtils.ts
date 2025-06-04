@@ -36,20 +36,25 @@ export function getGraphTitle(graph: StoredGraph): string {
 // Store original labels for hover functionality
 export const originalLabels = new Map<string, string>();
 
+// Store original colors for hover functionality
+export const originalColors = new Map<string, string>();
+
 // Map graph data for vis-network
 export function mapGraphData(
   data: { nodes: ApiNode[]; edges: ApiEdge[] }, 
   edgesDataSetRef: React.MutableRefObject<DataSet<object> | null>
 ) {
-  // Clear previous original labels
+  // Clear previous original labels and colors
   originalLabels.clear();
+  originalColors.clear();
   
   const edgesDataSet = new DataSet(data.edges.map(edge => {
     const edgeId = `${edge.source}-${edge.target}-${edge.label}`;
     const truncatedLabel = truncateLabel(edge.label);
     
-    // Store original label for hover functionality
+    // Store original label and color for hover functionality
     originalLabels.set(edgeId, edge.label);
+    originalColors.set(edgeId, edge.color);
     
     return {
       id: edgeId,

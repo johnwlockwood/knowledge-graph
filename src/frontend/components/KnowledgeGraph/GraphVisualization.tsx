@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DataSet } from 'vis-data';
 import { Network } from 'vis-network/standalone';
 import { ApiNode, ApiEdge, INITIAL_DATA } from '../../utils/constants';
-import { mapGraphData, getNetworkOptions, originalLabels } from '../../utils/graphUtils';
+import { mapGraphData, getNetworkOptions, originalLabels, originalColors } from '../../utils/graphUtils';
 
 interface GraphVisualizationProps {
   graphData: { nodes: ApiNode[]; edges: ApiEdge[] };
