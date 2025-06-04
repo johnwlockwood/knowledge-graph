@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { DataSet } from 'vis-data';
 import { Network } from 'vis-network/standalone';
 
@@ -13,6 +13,22 @@ interface ApiEdge {
   target: number;
   label: string;
   color: string;
+}
+
+interface StoredGraph {
+  id: string;
+  title: string;
+  data: {
+    nodes: ApiNode[];
+    edges: ApiEdge[];
+  };
+  createdAt: number;
+  subject: string;
+  isExample?: boolean;
+}
+
+interface UserPreferences {
+  hiddenGraphIds: string[];
 }
 
 // Function to calculate color brightness and return appropriate text color
@@ -110,7 +126,57 @@ const QUANTUM_PHYSICS_GRAPH = {
   ]
 };
 
-const GRAPH_HISTORY = [INITIAL_DATA, QUANTUM_PHYSICS_GRAPH];
+// Example graphs with unique IDs
+const EXAMPLE_GRAPHS: StoredGraph[] = [
+  {
+    id: 'example-underpants',
+    title: 'Underpants Gnomes',
+    data: INITIAL_DATA,
+    createdAt: Date.now() - 86400000, // 1 day ago
+    subject: 'Underpants Gnomes',
+    isExample: true
+  },
+  {
+    id: 'example-quantum',
+    title: 'Quantum Mechanics',
+    data: QUANTUM_PHYSICS_GRAPH,
+    createdAt: Date.now() - 43200000, // 12 hours ago
+    subject: 'Quantum Physics',
+    isExample: true
+  }
+];
+
+// Local storage utilities
+const STORAGE_KEYS = {
+  GRAPHS: 'knowledge-graphs',
+  PREFERENCES: 'user-preferences'
+};
+
+function saveToLocalStorage<T>(key: string, data: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.warn('Failed to save to localStorage:', error);
+  }
+}
+
+function loadFromLocalStorage<T>(key: string, defaultValue: T): T {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.warn('Failed to load from localStorage:', error);
+    return defaultValue;
+  }
+}
+
+function generateGraphId(): string {
+  return `graph-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function getGraphTitle(graph: StoredGraph): string {
+  return graph.title || (graph.data.nodes.length > 0 ? graph.data.nodes[0].label : 'Untitled Graph');
+}
 
 function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }, edgesDataSetRef: React.MutableRefObject<DataSet<object> | null>) {
   // Clear previous original labels
@@ -157,54 +223,112 @@ function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }, edgesDataSet
 }
 
 export default function KnowledgeGraph() {
-  const [subject, setSubject] = useState('Underpants Gnomes');
+  const [subject, setSubject] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [graphData, setGraphData] = useState(INITIAL_DATA);
-  const [graphHistory, setGraphHistory] = useState(GRAPH_HISTORY);
-  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [allGraphs, setAllGraphs] = useState<StoredGraph[]>([]);
+  const [visibleGraphs, setVisibleGraphs] = useState<StoredGraph[]>([]);
+  const [currentGraphIndex, setCurrentGraphIndex] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const edgesDataSetRef = useRef<DataSet<object> | null>(null);
   const [hoveredLabel, setHoveredLabel] = useState<{text: string, x: number, y: number} | null>(null);
 
-  // Navigation functions
-  const goToPreviousGraph = () => {
-    if (currentHistoryIndex > 0) {
-      const newIndex = currentHistoryIndex - 1;
-      setCurrentHistoryIndex(newIndex);
-      setGraphData(graphHistory[newIndex]);
+  // Initialize graphs from localStorage
+  useEffect(() => {
+    const savedGraphs = loadFromLocalStorage<StoredGraph[]>(STORAGE_KEYS.GRAPHS, []);
+    const preferences = loadFromLocalStorage<UserPreferences>(STORAGE_KEYS.PREFERENCES, { hiddenGraphIds: [] });
+    
+    // Merge saved graphs with examples, avoiding duplicates
+    const existingIds = new Set(savedGraphs.map(g => g.id));
+    const exampleGraphsToAdd = EXAMPLE_GRAPHS.filter(g => !existingIds.has(g.id));
+    const allGraphsData = [...savedGraphs, ...exampleGraphsToAdd];
+    
+    // Filter out hidden graphs
+    const visibleGraphsData = allGraphsData.filter(g => !preferences.hiddenGraphIds.includes(g.id));
+    
+    setAllGraphs(allGraphsData);
+    setVisibleGraphs(visibleGraphsData);
+    
+    // Set initial graph
+    if (visibleGraphsData.length > 0) {
+      setCurrentGraphIndex(0);
     }
-  };
+  }, []);
 
-  const goToNextGraph = () => {
-    if (currentHistoryIndex < graphHistory.length - 1) {
-      const newIndex = currentHistoryIndex + 1;
-      setCurrentHistoryIndex(newIndex);
-      setGraphData(graphHistory[newIndex]);
+  // Save graphs to localStorage whenever allGraphs changes
+  useEffect(() => {
+    if (allGraphs.length > 0) {
+      saveToLocalStorage(STORAGE_KEYS.GRAPHS, allGraphs);
     }
-  };
+  }, [allGraphs]);
+
+  // Show toast notifications
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Get current graph data
+  const currentGraph = visibleGraphs[currentGraphIndex];
+  const currentGraphData = currentGraph?.data || INITIAL_DATA;
+
+  // Navigation functions
+  const goToPreviousGraph = useCallback(() => {
+    if (currentGraphIndex > 0) {
+      setCurrentGraphIndex(currentGraphIndex - 1);
+    }
+  }, [currentGraphIndex]);
+
+  const goToNextGraph = useCallback(() => {
+    if (currentGraphIndex < visibleGraphs.length - 1) {
+      setCurrentGraphIndex(currentGraphIndex + 1);
+    }
+  }, [currentGraphIndex, visibleGraphs.length]);
 
   const goToGraphAtIndex = (index: number) => {
-    if (index >= 0 && index < graphHistory.length) {
-      setCurrentHistoryIndex(index);
-      setGraphData(graphHistory[index]);
+    if (index >= 0 && index < visibleGraphs.length) {
+      setCurrentGraphIndex(index);
     }
   };
 
-  // Get graph title for display
-  const getGraphTitle = (graph: typeof INITIAL_DATA, index: number) => {
-    // Use the first node's label as the graph title
-    if (graph.nodes && graph.nodes.length > 0) {
-      return graph.nodes[0].label;
+  // Remove graph function
+  const removeGraph = (graphId: string) => {
+    const preferences = loadFromLocalStorage<UserPreferences>(STORAGE_KEYS.PREFERENCES, { hiddenGraphIds: [] });
+    const updatedPreferences = {
+      ...preferences,
+      hiddenGraphIds: [...preferences.hiddenGraphIds, graphId]
+    };
+    
+    saveToLocalStorage(STORAGE_KEYS.PREFERENCES, updatedPreferences);
+    
+    // Update visible graphs
+    const newVisibleGraphs = visibleGraphs.filter(g => g.id !== graphId);
+    setVisibleGraphs(newVisibleGraphs);
+    
+    // Adjust current index if necessary
+    if (currentGraphIndex >= newVisibleGraphs.length) {
+      setCurrentGraphIndex(Math.max(0, newVisibleGraphs.length - 1));
     }
-    return `Graph ${index + 1}`;
+    
+    const removedGraph = allGraphs.find(g => g.id === graphId);
+    setToast({
+      message: `Removed "${getGraphTitle(removedGraph!)}" from workspace`,
+      type: 'success'
+    });
+    
+    setShowDeleteConfirm(null);
   };
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
+      // Don't trigger shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -212,12 +336,15 @@ export default function KnowledgeGraph() {
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         goToNextGraph();
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && currentGraph && visibleGraphs.length > 0) {
+        e.preventDefault();
+        setShowDeleteConfirm(currentGraph.id);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentHistoryIndex, graphHistory.length]);
+  }, [currentGraph, visibleGraphs, goToPreviousGraph, goToNextGraph]);
 
   useEffect(() => {
     // Initialize network when component mounts
@@ -236,7 +363,7 @@ export default function KnowledgeGraph() {
 
       networkRef.current = new Network(
         containerRef.current, 
-        mapGraphData(graphData, edgesDataSetRef), 
+        mapGraphData(currentGraphData, edgesDataSetRef), 
         {
           interaction: { hover: true },
           nodes: {
@@ -294,8 +421,8 @@ export default function KnowledgeGraph() {
           
           if (edgeData && typeof edgeData === 'object' && 'from' in edgeData && 'to' in edgeData) {
             // Get node positions
-            const fromNodeId = (edgeData as any).from;
-            const toNodeId = (edgeData as any).to;
+            const fromNodeId = (edgeData as { from: number; to: number }).from;
+            const toNodeId = (edgeData as { from: number; to: number }).to;
             const fromNode = networkRef.current.getPositions([fromNodeId]);
             const toNode = networkRef.current.getPositions([toNodeId]);
             
@@ -308,7 +435,6 @@ export default function KnowledgeGraph() {
               
               // Convert network coordinates to DOM coordinates
               const domPosition = networkRef.current.canvasToDOM({x: centerX, y: centerY});
-              const containerRect = containerRef.current.getBoundingClientRect();
               
               // Set the floating label with position relative to the container
               setHoveredLabel({
@@ -358,7 +484,7 @@ export default function KnowledgeGraph() {
         networkRef.current.destroy();
       }
     };
-  }, [graphData]);
+  }, [currentGraphData]);
 
   const generateGraph = async () => {
     if (!subject.trim()) return;
@@ -381,13 +507,30 @@ export default function KnowledgeGraph() {
       
       const data = await response.json();
       
-      // Add to history and update current graph
-      const newHistory = [...graphHistory, data];
-      setGraphHistory(newHistory);
-      setCurrentHistoryIndex(newHistory.length - 1);
-      setGraphData(data);
+      // Create new graph with unique ID
+      const newGraph: StoredGraph = {
+        id: generateGraphId(),
+        title: data.nodes.length > 0 ? data.nodes[0].label : subject,
+        data: data,
+        createdAt: Date.now(),
+        subject: subject
+      };
       
-      // Network will update automatically due to the useEffect dependency
+      // Add to all graphs and visible graphs
+      const updatedAllGraphs = [...allGraphs, newGraph];
+      const updatedVisibleGraphs = [...visibleGraphs, newGraph];
+      
+      setAllGraphs(updatedAllGraphs);
+      setVisibleGraphs(updatedVisibleGraphs);
+      setCurrentGraphIndex(updatedVisibleGraphs.length - 1);
+      
+      setToast({
+        message: `Generated "${newGraph.title}" knowledge graph`,
+        type: 'success'
+      });
+      
+      // Clear the subject input
+      setSubject('');
     } catch (err) {
       setError('Failed to generate knowledge graph. Please try again.');
       console.error(err);
@@ -408,6 +551,52 @@ export default function KnowledgeGraph() {
         <h1 className="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-8">
           Knowledge Graph Generator
         </h1>
+        
+        {/* Toast Notifications */}
+        {toast && (
+          <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
+            toast.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            <div className="flex items-center">
+              {toast.type === 'success' ? (
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+              {toast.message}
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Remove Graph</h3>
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to remove &ldquo;{getGraphTitle(allGraphs.find(g => g.id === showDeleteConfirm)!)}&rdquo; from your workspace?
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => removeGraph(showDeleteConfirm)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Remove
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="bg-white/80 backdrop-blur-lg shadow-lg rounded-xl p-6 mb-8">
           <div className="flex space-x-4">
@@ -448,12 +637,12 @@ export default function KnowledgeGraph() {
             <h2 className="text-xl font-semibold text-gray-800">Knowledge Graph</h2>
             
             {/* Navigation Controls */}
-            {graphHistory.length > 1 && (
+            {visibleGraphs.length > 1 && (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={goToPreviousGraph}
-                    disabled={currentHistoryIndex === 0}
+                    disabled={currentGraphIndex === 0}
                     className="p-2 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title="Previous graph (←)"
                   >
@@ -463,12 +652,12 @@ export default function KnowledgeGraph() {
                   </button>
                   
                   <span className="text-sm text-gray-600 font-medium">
-                    {currentHistoryIndex + 1} of {graphHistory.length}
+                    {currentGraphIndex + 1} of {visibleGraphs.length}
                   </span>
                   
                   <button
                     onClick={goToNextGraph}
-                    disabled={currentHistoryIndex === graphHistory.length - 1}
+                    disabled={currentGraphIndex === visibleGraphs.length - 1}
                     className="p-2 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title="Next graph (→)"
                   >
@@ -482,59 +671,106 @@ export default function KnowledgeGraph() {
           </div>
 
           {/* Graph History Timeline */}
-          {graphHistory.length > 1 && (
+          {visibleGraphs.length > 1 && (
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-2 overflow-x-auto">
-                {graphHistory.map((graph, index) => (
-                  <button
-                    key={index}
-                    onClick={() => goToGraphAtIndex(index)}
-                    className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      index === currentHistoryIndex
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                    }`}
-                    title={`Go to ${getGraphTitle(graph, index)}`}
-                  >
-                    {getGraphTitle(graph, index)}
-                  </button>
-                ))}
+              <div className="relative">
+                {/* Scroll container with improved spacing and behavior */}
+                <div 
+                  className="flex items-center gap-3 overflow-x-auto pb-2 scroll-smooth"
+                  style={{
+                    scrollSnapType: 'x mandatory',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#cbd5e1 #f1f5f9'
+                  }}
+                >
+                  {visibleGraphs.map((graph, index) => (
+                    <div 
+                      key={graph.id} 
+                      className="flex items-center gap-2 flex-shrink-0"
+                      style={{ scrollSnapAlign: 'start' }}
+                    >
+                      <button
+                        onClick={() => goToGraphAtIndex(index)}
+                        className={`min-w-[120px] max-w-[200px] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 truncate ${
+                          index === currentGraphIndex
+                            ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300'
+                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                        }`}
+                        title={`Go to ${getGraphTitle(graph)}`}
+                      >
+                        {getGraphTitle(graph)}
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(graph.id)}
+                        className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group"
+                        title="Remove graph"
+                      >
+                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Scroll indicators - left fade */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10"></div>
+                
+                {/* Scroll indicators - right fade */}
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div>
               </div>
-              <div className="mt-2 text-xs text-gray-500">
-                Use ← → arrow keys to navigate • Click timeline items to jump to specific graphs
+              <div className="mt-3 text-xs text-gray-500 flex items-center justify-between">
+                <span>Use ← → arrow keys to navigate • Delete key to remove current graph • Click × to remove specific graphs</span>
+                {visibleGraphs.length > 3 && (
+                  <span className="text-indigo-600 font-medium">← Scroll to see more →</span>
+                )}
               </div>
             </div>
           )}
 
-          <div 
-            ref={containerRef} 
-            className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl relative"
-          >
-            {/* Floating label overlay */}
-            {hoveredLabel && (
-              <div
-                className="absolute z-50 pointer-events-none"
-                style={{
-                  left: hoveredLabel.x,
-                  top: hoveredLabel.y,
-                  transform: 'translate(-50%, -100%)'
-                }}
-              >
-                <div className="bg-white border-4 border-indigo-500 rounded-lg px-4 py-2 shadow-lg max-w-xs">
-                  <div className="text-sm font-semibold text-gray-900 text-center">
-                    {hoveredLabel.text}
-                  </div>
-                  {/* Arrow pointing down */}
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2">
-                    <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-indigo-500"></div>
-                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
-                      <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white"></div>
+          {/* Empty State */}
+          {visibleGraphs.length === 0 && (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No knowledge graphs</h3>
+              <p className="mt-1 text-sm text-gray-500">Get started by generating your first knowledge graph above.</p>
+            </div>
+          )}
+
+          {/* Graph Container */}
+          {visibleGraphs.length > 0 && (
+            <div 
+              ref={containerRef} 
+              className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl relative"
+            >
+              {/* Floating label overlay */}
+              {hoveredLabel && (
+                <div
+                  className="absolute z-50 pointer-events-none"
+                  style={{
+                    left: hoveredLabel.x,
+                    top: hoveredLabel.y,
+                    transform: 'translate(-50%, -100%)'
+                  }}
+                >
+                  <div className="bg-white border-4 border-indigo-500 rounded-lg px-4 py-2 shadow-lg max-w-xs">
+                    <div className="text-sm font-semibold text-gray-900 text-center">
+                      {hoveredLabel.text}
+                    </div>
+                    {/* Arrow pointing down */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2">
+                      <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-indigo-500"></div>
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+                        <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white"></div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
