@@ -15,12 +15,29 @@ interface ApiEdge {
   color: string;
 }
 
+// Function to calculate color brightness and return appropriate text color
+function getContrastColor(hexColor: string): string {
+  // Remove # if present
+  const color = hexColor.replace('#', '');
+  
+  // Parse RGB values
+  const r = parseInt(color.substr(0, 2), 16);
+  const g = parseInt(color.substr(2, 2), 16);
+  const b = parseInt(color.substr(4, 2), 16);
+  
+  // Calculate luminance using standard formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return white for dark backgrounds, black for light backgrounds
+  return luminance > 0.5 ? '#000000' : '#FFFFFF';
+}
+
 const INITIAL_DATA = {
   nodes: [
-    { id: 1, label: "Underpants Gnomes", color: "#FF5733" },
+    { id: 1, label: "Underpants Gnomes", color: "#2D3748" },
     { id: 2, label: "Phase 1: Collect Underpants", color: "#FFD700" },
-    { id: 3, label: "Phase 2: ?", color: "#FFD700" },
-    { id: 4, label: "Phase 3: Profit", color: "#FFD700" }
+    { id: 3, label: "Phase 2: ?", color: "#E53E3E" },
+    { id: 4, label: "Phase 3: Profit", color: "#38A169" }
   ],
   edges: [
     { source: 1, target: 2, label: "Step 1", color: "black" },
@@ -42,6 +59,9 @@ function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
           background: node.color,
           border: node.color
         }
+      },
+      font: {
+        color: getContrastColor(node.color)
       }
     }))),
     edges: new DataSet(data.edges.map(edge => ({
@@ -90,7 +110,6 @@ export default function KnowledgeGraph() {
             font: {
               size: 18,
               face: "Arial",
-              color: "#000000",
               bold: "normal"
             },
             labelHighlightBold: true,
