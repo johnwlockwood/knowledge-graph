@@ -48,7 +48,6 @@ function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
         size: 18,
         face: "Arial",
         bold: "normal",
-        background: "#ffffff"
       },
       margin: { top: 10, right: 10, bottom: 10, left: 10 },
       shadow: true
