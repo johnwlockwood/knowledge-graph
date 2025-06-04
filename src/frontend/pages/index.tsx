@@ -42,15 +42,7 @@ function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
           background: node.color,
           border: node.color
         }
-      },
-      font: {
-        color: "#000000",
-        size: 18,
-        face: "Arial",
-        bold: "normal",
-      },
-      margin: { top: 10, right: 10, bottom: 10, left: 10 },
-      shadow: true
+      }
     }))),
     edges: new DataSet(data.edges.map(edge => ({
       id: `${edge.source}-${edge.target}-${edge.label}`,
@@ -72,7 +64,19 @@ export default function KnowledgeGraph() {
 
   useEffect(() => {
     // Initialize network when component mounts
-    if (containerRef.current) {
+    const initializeNetwork = async () => {
+      if (!containerRef.current) return;
+
+      // Wait for Inter font to load before initializing the network
+      try {
+        if ('fonts' in document) {
+          await document.fonts.load('400 20px Inter');
+          await document.fonts.ready;
+        }
+      } catch (error) {
+        console.warn('Font loading failed, proceeding with fallback:', error);
+      }
+
       networkRef.current = new Network(
         containerRef.current, 
         mapGraphData(graphData), 
@@ -104,7 +108,7 @@ export default function KnowledgeGraph() {
             },
             font: {
               size: 20,  // Increased font size
-              face: "Inter",
+              face: "Inter, Arial, sans-serif",
               color: "#374151",
               strokeWidth: 1,  // Added stroke for better contrast
               strokeColor: "#000000",
@@ -122,7 +126,9 @@ export default function KnowledgeGraph() {
   }
         }
       );
-    }
+    };
+
+    initializeNetwork();
 
     // Clean up on unmount
     return () => {
