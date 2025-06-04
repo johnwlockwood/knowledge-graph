@@ -1,3 +1,4 @@
+"use client";
 import { DataSet } from 'vis-data';
 import { ApiNode, ApiEdge, StoredGraph } from './constants';
 

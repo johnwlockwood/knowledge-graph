@@ -1,3 +1,4 @@
+"use client";
 import { useState, useRef } from 'react';
 import { StoredGraph } from '../../../utils/constants';
 import { 

@@ -1,8 +1,9 @@
+"use client";
 import { useState } from 'react';
-import { useGraphData } from '../../hooks/useGraphData';
-import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
-import { getGraphTitle } from '../../utils/graphUtils';
-import { INITIAL_DATA } from '../../utils/constants';
+import { useGraphData } from '@/hooks/useGraphData';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { getGraphTitle } from '@/utils/graphUtils';
+import { INITIAL_DATA } from '@/utils/constants';
 import { GraphGenerator } from './GraphGenerator';
 import { GraphNavigation } from './GraphNavigation';
 import { GraphVisualization } from './GraphVisualization';

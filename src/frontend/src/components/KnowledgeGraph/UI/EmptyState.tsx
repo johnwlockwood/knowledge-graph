@@ -1,3 +1,4 @@
+"use client";
 export function EmptyState() {
   return (
     <div className="text-center py-12">

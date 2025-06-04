@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect, useCallback } from 'react';
 import { StoredGraph, UserPreferences, EXAMPLE_GRAPHS, STORAGE_KEYS } from '../utils/constants';
 import { getGraphTitle } from '../utils/graphUtils';
