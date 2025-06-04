@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { DataSet } from 'vis-data';
 import { Network } from 'vis-network/standalone';
 
@@ -278,17 +278,17 @@ export default function KnowledgeGraph() {
   const currentGraphData = currentGraph?.data || INITIAL_DATA;
 
   // Navigation functions
-  const goToPreviousGraph = () => {
+  const goToPreviousGraph = useCallback(() => {
     if (currentGraphIndex > 0) {
       setCurrentGraphIndex(currentGraphIndex - 1);
     }
-  };
+  }, [currentGraphIndex]);
 
-  const goToNextGraph = () => {
+  const goToNextGraph = useCallback(() => {
     if (currentGraphIndex < visibleGraphs.length - 1) {
       setCurrentGraphIndex(currentGraphIndex + 1);
     }
-  };
+  }, [currentGraphIndex, visibleGraphs.length]);
 
   const goToGraphAtIndex = (index: number) => {
     if (index >= 0 && index < visibleGraphs.length) {
