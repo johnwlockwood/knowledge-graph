@@ -103,7 +103,7 @@ export default function KnowledgeGraph() {
               roundness: 0.5
             },
             font: {
-              size: 14,  // Increased font size
+              size: 20,  // Increased font size
               face: "Inter",
               color: "#374151",
               strokeWidth: 1,  // Added stroke for better contrast
