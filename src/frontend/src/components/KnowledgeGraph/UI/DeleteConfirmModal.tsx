@@ -1,3 +1,4 @@
+"use client";
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   graphTitle: string;

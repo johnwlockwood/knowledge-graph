@@ -1,3 +1,4 @@
+"use client";
 import { StoredGraph } from '../../utils/constants';
 import { getGraphTitle } from '../../utils/graphUtils';
 

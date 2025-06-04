@@ -1,3 +1,4 @@
+"use client";
 import { StoredGraph } from './constants';
 import { generateGraphId } from './graphUtils';
 

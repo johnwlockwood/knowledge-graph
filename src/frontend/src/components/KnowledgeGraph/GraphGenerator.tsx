@@ -1,6 +1,7 @@
+"use client";
 import { useState } from 'react';
-import { StoredGraph } from '../../utils/constants';
-import { generateGraphId } from '../../utils/graphUtils';
+import { StoredGraph } from '@/utils/constants';
+import { generateGraphId } from '@/utils/graphUtils';
 
 interface GraphGeneratorProps {
   onGraphGenerated: (graph: StoredGraph) => void;
