@@ -1,0 +1,49 @@
+# NextJS Build and Dependencies
+src/frontend/.next/
+src/frontend/node_modules/
+src/frontend/out/
+src/frontend/build/
+src/frontend/coverage/
+src/frontend/.vercel/
+src/frontend/*.tsbuildinfo
+src/frontend/next-env.d.ts
+
+# Python
+*__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+.mypy_cache/
+.tox/
+src/knowledge_graph_app.egg-info/
+build/
+dist/
+
+# Environment and Virtual Environments
+.env*
+.venv/
+venv/
+env/
+
+# Package Managers
+uv.lock
+src/frontend/package-lock.json
+src/frontend/yarn.lock
+
+# IDE and System
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Self-reference
+.clineignore
