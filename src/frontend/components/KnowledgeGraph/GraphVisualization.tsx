@@ -92,11 +92,11 @@ export function GraphVisualization({ graphData }: GraphVisualizationProps) {
         setHoveredLabel(null);
         
         // Restore original edge styling
-        if (edgesDataSetRef.current) {
+        if (edgesDataSetRef.current && originalColors.has(edgeId)) {
           edgesDataSetRef.current.update({
             id: edgeId,
             width: 2,
-            color: "black"
+            color: originalColors.get(edgeId)
           });
         }
       });
