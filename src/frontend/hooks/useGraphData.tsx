@@ -66,6 +66,17 @@ export function useGraphData() {
     setCurrentGraphIndex(updatedVisibleGraphs.length - 1);
   }, [allGraphs, visibleGraphs]);
 
+  // Import multiple graphs
+  const importGraphs = useCallback((newGraphs: StoredGraph[]) => {
+    const updatedAllGraphs = [...allGraphs, ...newGraphs];
+    const updatedVisibleGraphs = [...visibleGraphs, ...newGraphs];
+    
+    setAllGraphs(updatedAllGraphs);
+    setVisibleGraphs(updatedVisibleGraphs);
+    // Set current index to the first imported graph
+    setCurrentGraphIndex(visibleGraphs.length);
+  }, [allGraphs, visibleGraphs]);
+
   // Remove graph function
   const removeGraph = useCallback((graphId: string) => {
     const preferences = loadFromLocalStorage<UserPreferences>(STORAGE_KEYS.PREFERENCES, { hiddenGraphIds: [] });
@@ -101,6 +112,7 @@ export function useGraphData() {
     goToNextGraph,
     goToGraphAtIndex,
     addGraph,
+    importGraphs,
     removeGraph
   };
 }
