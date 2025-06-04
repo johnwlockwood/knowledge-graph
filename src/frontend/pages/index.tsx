@@ -64,9 +64,10 @@ function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
 }
 
 export default function KnowledgeGraph() {
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState('Underpants Gnomes');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [graphData, setGraphData] = useState(INITIAL_DATA);
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -75,7 +76,7 @@ export default function KnowledgeGraph() {
     if (containerRef.current) {
       networkRef.current = new Network(
         containerRef.current, 
-        { nodes: new DataSet([]), edges: new DataSet([]) }, 
+        mapGraphData(graphData), 
         {
           interaction: { hover: true },
           nodes: {
@@ -122,10 +123,6 @@ export default function KnowledgeGraph() {
   }
         }
       );
-
-      // Set initial graph data
-      const mappedData = mapGraphData(INITIAL_DATA);
-      networkRef.current.setData(mappedData);
     }
 
     // Clean up on unmount
@@ -134,7 +131,7 @@ export default function KnowledgeGraph() {
         networkRef.current.destroy();
       }
     };
-  }, []);
+  }, [graphData]);
 
   const generateGraph = async () => {
     if (!subject.trim()) return;
@@ -157,11 +154,10 @@ export default function KnowledgeGraph() {
       
       const data = await response.json();
       
-      // Map nodes for Vis.js
-      const { nodes, edges } = mapGraphData(data);
-      if (networkRef.current) {
-        networkRef.current.setData({ nodes, edges });
-      }
+      // Store the data in state
+      setGraphData(data);
+      
+      // Network will update automatically due to the useEffect dependency
     } catch (err) {
       setError('Failed to generate knowledge graph. Please try again.');
       console.error(err);
