@@ -34,7 +34,24 @@ function mapGraphData(data: { nodes: ApiNode[]; edges: ApiEdge[] }) {
     nodes: new DataSet(data.nodes.map(node => ({
       id: node.id,
       label: node.label,
-      color: node.color
+      shape: "box",
+      color: {
+        background: node.color,
+        border: node.color,
+        highlight: {
+          background: node.color,
+          border: node.color
+        }
+      },
+      font: {
+        color: "#000000",
+        size: 18,
+        face: "Arial",
+        bold: "normal",
+        background: "#ffffff"
+      },
+      margin: { top: 10, right: 10, bottom: 10, left: 10 },
+      shadow: true
     }))),
     edges: new DataSet(data.edges.map(edge => ({
       id: `${edge.source}-${edge.target}-${edge.label}`,
@@ -62,15 +79,18 @@ export default function KnowledgeGraph() {
         {
           interaction: { hover: true },
           nodes: {
-            shape: "dot",
-            size: 40,  // Increased size for better label visibility
+            shape: "box",
+            size: 25,
+            margin: { top: 10, right: 10, bottom: 10, left: 10 },
+            widthConstraint: { minimum: 120 },
             font: {
-              size: 16,  // Increased font size
-              face: "Inter",
-              color: "#1f2937",
-              strokeWidth: 2,
-              strokeColor: "#ffffff"
-            }
+              size: 18,
+              face: "Arial",
+              color: "#000000",
+              bold: "normal"
+            },
+            labelHighlightBold: true,
+            shadow: true
           },
           edges: {
             width: 2,
