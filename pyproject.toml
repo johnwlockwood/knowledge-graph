@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowledge_graph_app"
+version = "0.1.0"
+description = "Knowledge Graph Application"
+authors = [{name = "John Doe", email = "john@example.com"}]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "openai",
+    "instructor",
+    "pydantic"
+]
+requires-python = ">=3.13"
