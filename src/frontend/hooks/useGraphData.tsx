@@ -74,7 +74,8 @@ export function useGraphData() {
     setAllGraphs(updatedAllGraphs);
     setVisibleGraphs(updatedVisibleGraphs);
     // Set current index to the first imported graph
-    setCurrentGraphIndex(visibleGraphs.length);
+    const newVisibleGraphsLength = updatedVisibleGraphs.length;
+    setCurrentGraphIndex(newVisibleGraphsLength - newGraphs.length);
   }, [allGraphs, visibleGraphs]);
 
   // Remove graph function
