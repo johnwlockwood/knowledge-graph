@@ -8,11 +8,19 @@ function rgbToHex(value: number): string {
   return hex.length === 1 ? "0" + hex : hex;
 }
 
+// Cache for contrast color calculations
+const colorCache = new Map<string, string>();
+
 // Function to calculate color brightness and return appropriate text color
 export function getContrastColor(colorInput: string): string {
   // Return early for server-side rendering
   if (typeof window === 'undefined') {
     return '#000000';
+  }
+
+  // Return cached result if available
+  if (colorCache.has(colorInput)) {
+    return colorCache.get(colorInput)!;
   }
 
   // Convert any CSS color to hex
@@ -43,8 +51,12 @@ export function getContrastColor(colorInput: string): string {
       
       const luminance = 0.2126 * rSRGB + 0.7152 * gSRGB + 0.0722 * bSRGB;
 
-      // Return black text for light backgrounds, white for dark backgrounds
-      return luminance > 0.179 ? '#000000' : '#FFFFFF';
+      // Determine contrast color
+      const contrastColor = luminance > 0.179 ? '#000000' : '#FFFFFF';
+      
+      // Cache result
+      colorCache.set(colorInput, contrastColor);
+      return contrastColor;
     }
   } catch (e) {
     console.error('Error converting color:', e);
