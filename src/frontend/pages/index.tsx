@@ -214,7 +214,7 @@ export default function KnowledgeGraph() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Knowledge Graph</h2>
           <div 
             ref={containerRef} 
-            className="h-[500px] border-2 border-dashed border-gray-300 rounded-xl"
+            className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl"
           ></div>
         </div>
       </div>
