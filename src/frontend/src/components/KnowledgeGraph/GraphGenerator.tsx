@@ -1,7 +1,6 @@
 "use client";
 import { useState } from 'react';
 import { StoredGraph } from '@/utils/constants';
-import { generateGraphId } from '@/utils/graphUtils';
 
 interface GraphGeneratorProps {
   onGraphGenerated: (graph: StoredGraph) => void;
@@ -32,15 +31,16 @@ export function GraphGenerator({ onGraphGenerated, onToast }: GraphGeneratorProp
         throw new Error(`API error: ${response.status}`);
       }
       
-      const data = await response.json();
+      const responseData = await response.json();
       
-      // Create new graph with unique ID
+      // Create new graph with server-generated metadata
       const newGraph: StoredGraph = {
-        id: generateGraphId(),
-        title: data.nodes.length > 0 ? data.nodes[0].label : subject,
-        data: data,
-        createdAt: Date.now(),
-        subject: subject
+        id: responseData.id,
+        title: responseData.graph.nodes.length > 0 ? responseData.graph.nodes[0].label : subject,
+        data: responseData.graph,
+        createdAt: responseData.createdAt,
+        subject: responseData.subject,
+        model: responseData.model
       };
       
       onGraphGenerated(newGraph);

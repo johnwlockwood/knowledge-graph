@@ -73,7 +73,7 @@ export function truncateLabel(label: string, maxLength: number = 20): string {
 
 // Generate unique graph ID
 export function generateGraphId(): string {
-  return `graph-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `graph-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 // Get graph title from graph data

@@ -1,4 +1,6 @@
 import instructor
+import time
+import uuid
 from pydantic import BaseModel, Field
 from openai import OpenAI
 
@@ -23,9 +25,13 @@ class KnowledgeGraph(BaseModel):
     edges: list[Edge] = Field(default_factory=list)
 
 
-def generate_graph(input: str) -> KnowledgeGraph:
-    return client.chat.completions.create(
-        model="gpt-3.5-turbo-16k",
+# GRAPH_MODEL = "gpt-3.5-turbo-16k"
+GRAPH_MODEL = "o4-mini-2025-04-16"
+
+
+def generate_graph(input: str) -> dict:
+    graph = client.chat.completions.create(
+        model=GRAPH_MODEL,
         messages=[
             {
                 "role": "user",
@@ -35,3 +41,11 @@ def generate_graph(input: str) -> KnowledgeGraph:
         ],
         response_model=KnowledgeGraph,
     )
+    # "o4-mini-2025-04-16",
+    return {
+        "graph": graph,
+        "model": GRAPH_MODEL,
+        "id": str(uuid.uuid4()),
+        "createdAt": int(time.time() * 1000),
+        "subject": input
+    }
