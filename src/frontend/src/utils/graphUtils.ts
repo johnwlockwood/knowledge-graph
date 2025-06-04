@@ -2,64 +2,56 @@
 import { DataSet } from 'vis-data';
 import { ApiNode, ApiEdge, StoredGraph } from './constants';
 
+// Function to convert RGB component to hex
+function rgbToHex(value: number): string {
+  const hex = value.toString(16);
+  return hex.length === 1 ? "0" + hex : hex;
+}
+
 // Function to calculate color brightness and return appropriate text color
 export function getContrastColor(colorInput: string): string {
-  // Remove console.log as it's no longer needed
-  // Map named colors to their hex equivalents
-  const namedColors: Record<string, string> = {
-    yellow: '#FFFF00',
-    lightblue: '#ADD8E6',
-    lightgreen: '#90EE90',
-    orange: '#FFA500',
-    lightpink: '#FFB6C1',
-    red: '#FF0000',
-    green: '#008000',
-    blue: '#0000FF',
-    purple: '#800080',
-    black: '#000000',
-    white: '#FFFFFF',
-    gray: '#808080',
-    lightgray: '#D3D3D3',
-    darkgray: '#A9A9A9',
-    cyan: '#00FFFF',
-    magenta: '#FF00FF',
-    lime: '#00FF00',
-    maroon: '#800000',
-    navy: '#000080',
-    olive: '#808000',
-    teal: '#008080',
-    silver: '#C0C0C0'
-  };
-
-  // Convert named color to hex if needed
-  let hexColor = colorInput.toLowerCase();
-  if (namedColors[hexColor]) {
-    hexColor = namedColors[hexColor];
+  // Return early for server-side rendering
+  if (typeof window === 'undefined') {
+    return '#000000';
   }
 
-  // Remove # if present
-  const cleanHex = hexColor.replace('#', '');
-  
-  // Handle both 3-digit and 6-digit hex formats
-  let fullHex = cleanHex;
-  if (cleanHex.length === 3) {
-    fullHex = cleanHex.split('').map(char => char + char).join('');
+  // Convert any CSS color to hex
+  try {
+    const tempElement = document.createElement('span');
+    tempElement.style.color = colorInput;
+    tempElement.style.display = 'none';
+    document.body.appendChild(tempElement);
+
+    const computedColor = getComputedStyle(tempElement).color;
+    document.body.removeChild(tempElement);
+
+    const rgbValues = computedColor.match(/\d+/g)?.map(Number).slice(0, 3);
+    
+    if (rgbValues && rgbValues.length === 3) {
+      const hexColor = `#${rgbToHex(rgbValues[0])}${rgbToHex(rgbValues[1])}${rgbToHex(rgbValues[2])}`;
+      const cleanHex = hexColor.replace('#', '');
+      
+      // Parse RGB values
+      const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+      const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+      const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+
+      // Calculate relative luminance (WCAG 2.0 formula)
+      const rSRGB = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+      const gSRGB = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
+      const bSRGB = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
+      
+      const luminance = 0.2126 * rSRGB + 0.7152 * gSRGB + 0.0722 * bSRGB;
+
+      // Return black text for light backgrounds, white for dark backgrounds
+      return luminance > 0.179 ? '#000000' : '#FFFFFF';
+    }
+  } catch (e) {
+    console.error('Error converting color:', e);
   }
   
-  // Parse RGB values
-  const r = parseInt(fullHex.substring(0, 2), 16) / 255;
-  const g = parseInt(fullHex.substring(2, 4), 16) / 255;
-  const b = parseInt(fullHex.substring(4, 6), 16) / 255;
-
-  // Calculate relative luminance (WCAG 2.0 formula)
-  const rSRGB = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
-  const gSRGB = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
-  const bSRGB = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
-  
-  const luminance = 0.2126 * rSRGB + 0.7152 * gSRGB + 0.0722 * bSRGB;
-
-  // Return black text for light backgrounds, white for dark backgrounds
-  return luminance > 0.179 ? '#000000' : '#FFFFFF';
+  // Fallback to black text if conversion fails
+  return '#000000';
 }
 
 // Function to truncate edge labels for better readability
