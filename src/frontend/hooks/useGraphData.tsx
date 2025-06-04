@@ -39,16 +39,12 @@ export function useGraphData() {
 
   // Navigation functions
   const goToPreviousGraph = useCallback(() => {
-    if (currentGraphIndex > 0) {
-      setCurrentGraphIndex(currentGraphIndex - 1);
-    }
-  }, [currentGraphIndex]);
+    setCurrentGraphIndex(prev => prev > 0 ? prev - 1 : prev);
+  }, []);
 
   const goToNextGraph = useCallback(() => {
-    if (currentGraphIndex < visibleGraphs.length - 1) {
-      setCurrentGraphIndex(currentGraphIndex + 1);
-    }
-  }, [currentGraphIndex, visibleGraphs.length]);
+    setCurrentGraphIndex(prev => prev < visibleGraphs.length - 1 ? prev + 1 : prev);
+  }, [visibleGraphs.length]);
 
   const goToGraphAtIndex = useCallback((index: number) => {
     if (index >= 0 && index < visibleGraphs.length) {
@@ -93,13 +89,11 @@ export function useGraphData() {
     setVisibleGraphs(newVisibleGraphs);
     
     // Adjust current index if necessary
-    if (currentGraphIndex >= newVisibleGraphs.length) {
-      setCurrentGraphIndex(Math.max(0, newVisibleGraphs.length - 1));
-    }
+    setCurrentGraphIndex(prev => prev >= newVisibleGraphs.length ? Math.max(0, newVisibleGraphs.length - 1) : prev);
     
     const removedGraph = allGraphs.find(g => g.id === graphId);
     return removedGraph ? getGraphTitle(removedGraph) : 'Unknown Graph';
-  }, [allGraphs, visibleGraphs, currentGraphIndex]);
+  }, [allGraphs, visibleGraphs]);
 
   // Get current graph
   const currentGraph = visibleGraphs[currentGraphIndex];
