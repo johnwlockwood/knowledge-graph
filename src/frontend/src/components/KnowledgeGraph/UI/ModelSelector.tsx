@@ -1,5 +1,6 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export type AvailableModel = 
   | "gpt-4o-mini-2024-07-18"
@@ -32,12 +33,80 @@ const MODEL_OPTIONS: { value: AvailableModel; label: string; description: string
 
 export function ModelSelector({ selectedModel, onModelChange, disabled = false }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const selectedOption = MODEL_OPTIONS.find(option => option.value === selectedModel);
+
+  // Calculate dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
+
+  // Dropdown content to be rendered via portal
+  const dropdownContent = isOpen && !disabled && (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0"
+        style={{ zIndex: 999998 }}
+        onClick={() => setIsOpen(false)}
+      />
+      
+      {/* Dropdown - rendered via portal at document root */}
+      <div 
+        className="fixed bg-white border border-gray-300 rounded-lg shadow-lg"
+        style={{
+          zIndex: 999999,
+          maxHeight: '300px',
+          overflowY: 'auto',
+          top: dropdownPosition.top,
+          left: dropdownPosition.left,
+          width: dropdownPosition.width
+        }}
+      >
+        <div className="py-1">
+          {MODEL_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onModelChange(option.value);
+                setIsOpen(false);
+              }}
+              className={`w-full px-4 py-3 text-left hover:bg-indigo-50 focus:outline-none focus:bg-indigo-50 transition-colors duration-150 ${
+                selectedModel === option.value
+                  ? 'bg-indigo-50 text-indigo-900'
+                  : 'text-gray-900'
+              }`}
+            >
+              <div className="font-medium">{option.label}</div>
+              <div className="text-sm text-gray-500">{option.description}</div>
+              {selectedModel === option.value && (
+                <div className="mt-1">
+                  <svg className="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
@@ -65,46 +134,8 @@ export function ModelSelector({ selectedModel, onModelChange, disabled = false }
         </div>
       </button>
 
-      {isOpen && !disabled && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-[9998]"
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Dropdown */}
-          <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-            <div className="py-1">
-              {MODEL_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onModelChange(option.value);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full px-4 py-3 text-left hover:bg-indigo-50 focus:outline-none focus:bg-indigo-50 transition-colors duration-150 ${
-                    selectedModel === option.value
-                      ? 'bg-indigo-50 text-indigo-900'
-                      : 'text-gray-900'
-                  }`}
-                >
-                  <div className="font-medium">{option.label}</div>
-                  <div className="text-sm text-gray-500">{option.description}</div>
-                  {selectedModel === option.value && (
-                    <div className="mt-1">
-                      <svg className="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      {/* Render dropdown via portal to document.body */}
+      {typeof document !== 'undefined' && dropdownContent && createPortal(dropdownContent, document.body)}
     </div>
   );
 }
