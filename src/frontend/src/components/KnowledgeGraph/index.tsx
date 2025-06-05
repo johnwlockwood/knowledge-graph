@@ -64,32 +64,11 @@ export default function KnowledgeGraph() {
     streamingResetRef.current = resetFn;
   };
 
-  // Navigation handlers that reset streaming state before navigating
-  const handleGoToPreviousGraph = () => {
-    if (streamingResetRef.current) {
-      streamingResetRef.current();
-    }
-    goToPreviousGraph();
-  };
-
-  const handleGoToNextGraph = () => {
-    if (streamingResetRef.current) {
-      streamingResetRef.current();
-    }
-    goToNextGraph();
-  };
-
-  const handleGoToGraphAtIndex = (index: number) => {
-    if (streamingResetRef.current) {
-      streamingResetRef.current();
-    }
-    goToGraphAtIndex(index);
-  };
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    onPrevious: handleGoToPreviousGraph,
-    onNext: handleGoToNextGraph,
+    onPrevious: goToPreviousGraph,
+    onNext: goToNextGraph,
     onDelete: currentGraph && visibleGraphs.length > 0 ? () => handleDeleteRequest(currentGraph.id) : undefined
   });
 
@@ -163,9 +142,9 @@ export default function KnowledgeGraph() {
           <GraphNavigation
             visibleGraphs={visibleGraphs}
             currentGraphIndex={currentGraphIndex}
-            onPrevious={handleGoToPreviousGraph}
-            onNext={handleGoToNextGraph}
-            onGoToIndex={handleGoToGraphAtIndex}
+            onPrevious={goToPreviousGraph}
+            onNext={goToNextGraph}
+            onGoToIndex={goToGraphAtIndex}
             onRequestDelete={handleDeleteRequest}
           />
 
