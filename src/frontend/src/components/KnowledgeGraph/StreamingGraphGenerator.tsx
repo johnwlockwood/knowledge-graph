@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StoredGraph } from '@/utils/constants';
 import { useStreamingGraph } from '@/hooks/useStreamingGraph';
 import { ModelSelector, AvailableModel } from './UI/ModelSelector';
@@ -9,9 +9,10 @@ import { GraphVisualization } from './GraphVisualization';
 interface StreamingGraphGeneratorProps {
   onGraphGenerated: (graph: StoredGraph) => void;
   onToast: (message: string, type: 'success' | 'error') => void;
+  onResetState?: (resetFn: () => void) => void;
 }
 
-export function StreamingGraphGenerator({ onGraphGenerated, onToast }: StreamingGraphGeneratorProps) {
+export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('gpt-4o-mini-2024-07-18');
   
@@ -24,10 +25,21 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast }: Streaming
     progress,
     startStreaming,
     cancelStreaming,
+    resetState,
   } = useStreamingGraph();
+
+  // Expose resetState function to parent component
+  useEffect(() => {
+    if (onResetState) {
+      onResetState(resetState);
+    }
+  }, [onResetState, resetState]);
 
   const handleGenerate = async () => {
     if (!subject.trim()) return;
+    
+    // Clear any previous streaming state before starting new generation
+    resetState();
     
     try {
       await startStreaming(subject, selectedModel, (graph: StoredGraph) => {

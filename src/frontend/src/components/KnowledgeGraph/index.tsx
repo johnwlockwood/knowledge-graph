@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useGraphData } from '@/hooks/useGraphData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getGraphTitle } from '@/utils/graphUtils';
@@ -16,6 +16,9 @@ export default function KnowledgeGraph() {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // Ref to store the streaming reset function
+  const streamingResetRef = useRef<(() => void) | null>(null);
 
   const {
     allGraphs,
@@ -56,10 +59,37 @@ export default function KnowledgeGraph() {
     setShowDeleteConfirm(null);
   };
 
+  // Handle streaming reset state callback
+  const handleStreamingResetState = (resetFn: () => void) => {
+    streamingResetRef.current = resetFn;
+  };
+
+  // Navigation handlers that reset streaming state before navigating
+  const handleGoToPreviousGraph = () => {
+    if (streamingResetRef.current) {
+      streamingResetRef.current();
+    }
+    goToPreviousGraph();
+  };
+
+  const handleGoToNextGraph = () => {
+    if (streamingResetRef.current) {
+      streamingResetRef.current();
+    }
+    goToNextGraph();
+  };
+
+  const handleGoToGraphAtIndex = (index: number) => {
+    if (streamingResetRef.current) {
+      streamingResetRef.current();
+    }
+    goToGraphAtIndex(index);
+  };
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    onPrevious: goToPreviousGraph,
-    onNext: goToNextGraph,
+    onPrevious: handleGoToPreviousGraph,
+    onNext: handleGoToNextGraph,
     onDelete: currentGraph && visibleGraphs.length > 0 ? () => handleDeleteRequest(currentGraph.id) : undefined
   });
 
@@ -124,6 +154,7 @@ export default function KnowledgeGraph() {
         <StreamingGraphGenerator
           onGraphGenerated={addGraph}
           onToast={handleToast}
+          onResetState={handleStreamingResetState}
         />
         
         {/* Graph Display Container */}
@@ -132,9 +163,9 @@ export default function KnowledgeGraph() {
           <GraphNavigation
             visibleGraphs={visibleGraphs}
             currentGraphIndex={currentGraphIndex}
-            onPrevious={goToPreviousGraph}
-            onNext={goToNextGraph}
-            onGoToIndex={goToGraphAtIndex}
+            onPrevious={handleGoToPreviousGraph}
+            onNext={handleGoToNextGraph}
+            onGoToIndex={handleGoToGraphAtIndex}
             onRequestDelete={handleDeleteRequest}
           />
 
@@ -152,7 +183,8 @@ export default function KnowledgeGraph() {
           {visibleGraphs.length > 0 && (
             <GraphVisualization 
               graphData={currentGraphData} 
-              model={currentModel} 
+              model={currentModel}
+              graphId={currentGraph?.id}
             />
           )}
         </div>

@@ -69,12 +69,12 @@ export function ModelSelector({ selectedModel, onModelChange, disabled = false }
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-[9998]"
             onClick={() => setIsOpen(false)}
           />
           
           {/* Dropdown */}
-          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+          <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
             <div className="py-1">
               {MODEL_OPTIONS.map((option) => (
                 <button

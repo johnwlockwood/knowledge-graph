@@ -51,9 +51,16 @@ export function useStreamingGraph() {
     model: string,
     onComplete: (graph: StoredGraph) => void
   ) => {
-    // Reset state and refs
+    // Cancel any existing streaming
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Reset state and refs completely
     currentNodesRef.current = [];
     currentEdgesRef.current = [];
+    streamingResultRef.current = null;
+    
     setState({
       isStreaming: true,
       nodes: [],
@@ -198,10 +205,33 @@ export function useStreamingGraph() {
     }
   }, []);
 
+  const resetState = useCallback(() => {
+    // Cancel any existing streaming
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Reset all state and refs
+    currentNodesRef.current = [];
+    currentEdgesRef.current = [];
+    streamingResultRef.current = null;
+    abortControllerRef.current = null;
+    
+    setState({
+      isStreaming: false,
+      nodes: [],
+      edges: [],
+      status: '',
+      error: null,
+      progress: { nodesCount: 0, edgesCount: 0 },
+    });
+  }, []);
+
   return {
     ...state,
     startStreaming,
     cancelStreaming,
+    resetState,
   };
 }
 
