@@ -3,7 +3,6 @@ import logging
 import instructor
 import time
 import uuid
-from typing import Literal
 from collections.abc import AsyncGenerator
 from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
