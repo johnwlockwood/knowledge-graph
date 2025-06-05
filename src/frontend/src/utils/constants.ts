@@ -107,7 +107,7 @@ export const EXAMPLE_GRAPHS: StoredGraph[] = [
     data: INITIAL_DATA,
     createdAt: Date.now() - 86400000, // 1 day ago
     subject: 'Underpants Gnomes',
-    model: 'example-model',
+    model: 'gpt-3.5-turbo-16k',
     isExample: true
   },
   {
@@ -116,7 +116,7 @@ export const EXAMPLE_GRAPHS: StoredGraph[] = [
     data: QUANTUM_PHYSICS_GRAPH,
     createdAt: Date.now() - 43200000, // 12 hours ago
     subject: 'Quantum Physics',
-    model: 'example-model',
+    model: 'gpt-3.5-turbo-16k',
     isExample: true
   }
 ];

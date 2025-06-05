@@ -65,6 +65,7 @@ export default function KnowledgeGraph() {
 
   // Get current graph data
   const currentGraphData = currentGraph?.data || INITIAL_DATA;
+  const currentModel = currentGraph?.model || 'gpt-3.5-turbo-16k';
 
   // Get delete confirmation graph title
   const deleteConfirmGraph = showDeleteConfirm ? allGraphs.find(g => g.id === showDeleteConfirm) : null;
@@ -149,7 +150,10 @@ export default function KnowledgeGraph() {
 
           {/* Graph Visualization */}
           {visibleGraphs.length > 0 && (
-            <GraphVisualization graphData={currentGraphData} />
+            <GraphVisualization 
+              graphData={currentGraphData} 
+              model={currentModel} 
+            />
           )}
         </div>
       </div>

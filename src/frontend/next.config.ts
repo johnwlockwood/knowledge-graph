@@ -22,15 +22,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  devServer: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        timeout: 60000, // Set timeout to 60 seconds
-      },
-    },
-  },
 };
 
 export default nextConfig;
