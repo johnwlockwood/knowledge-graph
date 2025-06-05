@@ -19,3 +19,6 @@ requires-python = ">=3.13"
 
 [tool.uv]
 package-path = "src/app"
+
+[tool.ruff]
+line-length = 79
