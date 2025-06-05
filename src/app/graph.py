@@ -89,7 +89,7 @@ async def stream_generate_graph(
 ) -> AsyncGenerator[KnowledgeGraphEntity | None, None]:
     """Stream a knowledge graph based on the input text using the specified model."""
     graph_model = model if model in MODELS else MODELS[0]
-    logger.info("model requested: {model}, model used: {graph_model}")
+    logger.info(f"model requested: {model}, model used: {graph_model}")
     graph_entities = client.chat.completions.create_iterable(
         model=graph_model,
         messages=[
@@ -107,17 +107,22 @@ async def stream_generate_graph(
     async for entity in graph_entities:
         yield entity
 
+
 async def stream_generate_users(
     input: str, number_of_users: int, model: str
 ) -> AsyncGenerator[User | None, None]:
-    """Stream a knowledge graph based on the input text using the specified model."""
+    """Stream a knowledge graph based on the input text 
+    using the specified model."""
     graph_model = model if model in MODELS else MODELS[0]
     logger.info(f"users requested from input: {input}")
-    logger.info("model requested: {model}, model used: {graph_model}")
+    logger.info(f"model requested: {model}, model used: {graph_model}")
     graph_entities = client.chat.completions.create_iterable(
         model=graph_model,
         messages=[
-            {"role": "user", "content": f"Create {number_of_users} users from {input}"},
+            {
+                "role": "user",
+                "content": f"Create {number_of_users} users from {input}",
+            },
         ],
         response_model=User,
     )
@@ -131,7 +136,7 @@ async def main():
     input_text = "Quantum Physics"
     user_input_text = "Star Wars"
     model = "gpt-4o-mini-2024-07-18"
-    
+
     print(f"Generating knowledge graph for: {input_text}")
     print(f"Using model: {model}")
     print("-" * 50)
@@ -151,10 +156,15 @@ async def main():
             continue
         if entity.type == "node":
             node = Node(**entity.entity.model_dump())
-            print(f"Node ID: {node.id}, Label: {node.label}, Color: {node.color}")
+            print(
+                f"Node ID: {node.id}, Label: {node.label}, Color: {node.color}"
+            )
         elif entity.type == "edge":
             edge = Edge(**entity.entity.model_dump())
-            print(f"Edge from {edge.source} to {edge.target}, Label: {edge.label}, Color: {edge.color}")
+            print(
+                f"Edge from {edge.source} to {edge.target}, "
+                f"Label: {edge.label}, Color: {edge.color}"
+            )
         print("-" * 30)
 
 

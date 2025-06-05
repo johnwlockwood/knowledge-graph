@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
         source: '/api/generate-graph',
         destination: 'http://localhost:8000/api/generate-graph',
       },
+      {
+        source: '/api/stream-generate-graph',
+        destination: 'http://localhost:8000/api/stream-generate-graph',
+      },
     ];
   },
   async headers() {
@@ -17,6 +21,10 @@ const nextConfig: NextConfig = {
           {
             key: 'Connection',
             value: 'keep-alive',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache',
           },
         ],
       },

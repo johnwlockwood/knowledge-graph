@@ -4,7 +4,7 @@ import { useGraphData } from '@/hooks/useGraphData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getGraphTitle } from '@/utils/graphUtils';
 import { INITIAL_DATA } from '@/utils/constants';
-import { GraphGenerator } from './GraphGenerator';
+import { StreamingGraphGenerator } from './StreamingGraphGenerator';
 import { GraphNavigation } from './GraphNavigation';
 import { GraphVisualization } from './GraphVisualization';
 import { Toast } from './UI/Toast';
@@ -121,7 +121,7 @@ export default function KnowledgeGraph() {
         />
         
         {/* Graph Generator */}
-        <GraphGenerator
+        <StreamingGraphGenerator
           onGraphGenerated={addGraph}
           onToast={handleToast}
         />
