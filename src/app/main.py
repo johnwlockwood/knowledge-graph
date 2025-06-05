@@ -66,28 +66,44 @@ async def generate_knowledge_graph(request: SubjectRequest):
     return response
 
 
+async def generate_graph_stream_response(subject: str, model: str):
+    """Generate knowledge graph entities based on the subject using the specified model."""
+    graph_entities = stream_generate_graph(subject, model)
+    yield json.dumps(
+        {
+            "result": {
+                "id": str(uuid4()),
+                "createdAt": int(time.time() * 1000),
+                "subject": subject,
+                "model": model,
+                "status": "streaming",
+                "message": "Streaming knowledge graph entities",
+            }
+        }
+    ) + "\n"
+    async for entity in graph_entities:
+        if entity is None:
+            continue
+        yield entity.model_dump_json() + "\n"
+    
+    yield json.dumps({"result": "graph complete"}) + "\n"
+
 @app.post("/api/stream-generate-graph")
 async def stream_generate_knowledge_graph(
     request: SubjectRequest, model_request: ModelRequest
 ):
-    graph_entities = stream_generate_graph(
-        request.subject, model_request.model
+    """
+    Stream knowledge graph entities based on the subject using the specified model.
+    This endpoint streams the graph entities as they are generated.
+    """
+    return StreamingResponse(
+        generate_graph_stream_response(request.subject, model_request.model),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache"},
     )
 
-    yield {
-        "result": {
-            "id": str(uuid4()),
-            "createdAt": int(time.time() * 1000),
-            "subject": request.subject,
-        }
-    }
-    async for entity in graph_entities:
-        yield {"result": entity}
 
-    yield {"result": "graph complete"}
-
-
-async def stream_generate_users_response(subject: str, number_of_users: int, model: str):
+async def generate_users_stream_response(subject: str, number_of_users: int, model: str):
     """Stream user entities based on the subject using the specified model."""
     graph_entities = stream_generate_users(subject, number_of_users, model)
     async for entity in graph_entities:
@@ -99,7 +115,7 @@ async def stream_generate_users_response(subject: str, number_of_users: int, mod
 @app.post("/api/stream-users")
 async def stream_users(request: UsersRequest, model_request: ModelRequest):
     return StreamingResponse(
-        stream_generate_users_response(request.domain, request.number_of_users, model_request.model),
+        generate_users_stream_response(request.domain, request.number_of_users, model_request.model),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache"},
     )

@@ -34,8 +34,12 @@ class KnowledgeGraph(BaseModel):
 
 # Streamable Knowledge Graph entities
 class KnowledgeGraphEntity(BaseModel):
-    type: Literal["node"] | Literal["edge"]
-    entity: Edge | Node
+    type: str = Field(
+        description="Type of the entity, either 'node' or 'edge'."
+    )
+    entity: Edge | Node = Field(
+        description="The entity itself, which can be either a node or an edge."
+    )
 
 
 class User(BaseModel):
@@ -126,18 +130,32 @@ async def stream_generate_users(
 async def main():
     """Main function to test the stream_generate_graph function."""
     input_text = "Quantum Physics"
-    input_text = "Star Wars"
+    user_input_text = "Star Wars"
     model = "gpt-4o-mini-2024-07-18"
     
     print(f"Generating knowledge graph for: {input_text}")
     print(f"Using model: {model}")
     print("-" * 50)
 
-    async for entity in stream_generate_users(input_text, 5, model):
+    async for entity in stream_generate_users(user_input_text, 3, model):
         if entity is None:
             continue
         print(f"Entity name: {entity.name}")
         print(f"Entity age: {entity.age}")
+        print("-" * 30)
+
+    print(f"Generating knowledge graph for: {input_text}")
+    print(f"Using model: {model}")
+    print("-" * 50)
+    async for entity in stream_generate_graph(input_text, model):
+        if entity is None:
+            continue
+        if entity.type == "node":
+            node = Node(**entity.entity.model_dump())
+            print(f"Node ID: {node.id}, Label: {node.label}, Color: {node.color}")
+        elif entity.type == "edge":
+            edge = Edge(**entity.entity.model_dump())
+            print(f"Edge from {edge.source} to {edge.target}, Label: {edge.label}, Color: {edge.color}")
         print("-" * 30)
 
 
