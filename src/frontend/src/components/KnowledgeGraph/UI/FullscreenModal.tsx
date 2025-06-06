@@ -43,14 +43,14 @@ export function FullscreenModal({ isOpen, onClose, children }: FullscreenModalPr
   return createPortal(
     <div
       ref={modalRef}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-gray-100 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
       <div className="relative w-full h-full max-w-none max-h-none">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full p-2 text-white transition-all duration-200 hover:scale-110"
+          className="absolute top-4 right-4 z-10 bg-white hover:bg-gray-50 rounded-full p-2 text-gray-700 shadow-lg border border-gray-200 transition-all duration-200 hover:scale-110"
           title="Exit fullscreen (ESC)"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

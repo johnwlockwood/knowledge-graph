@@ -337,7 +337,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       {/* Fullscreen toggle button */}
       <button
         onClick={toggleFullscreen}
-        className={`absolute top-4 right-4 z-10 bg-white/80 hover:bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg border border-gray-200 transition-all duration-200 hover:scale-110 ${isFullscreenMode ? 'text-white bg-white/20 hover:bg-white/30' : 'text-gray-700'}`}
+        className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-lg border transition-all duration-200 hover:scale-110 ${isFullscreenMode ? 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200' : 'bg-white/80 hover:bg-white/90 backdrop-blur-sm border-gray-200 text-gray-700'}`}
         title={isFullscreenMode ? "Exit fullscreen" : "Enter fullscreen"}
       >
         {isFullscreenMode ? (
