@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from 'react';
 
 interface StreamingProgressProps {
   isStreaming: boolean;
@@ -11,12 +12,46 @@ interface StreamingProgressProps {
 }
 
 export function StreamingProgress({ isStreaming, status, progress, onCancel }: StreamingProgressProps) {
-  if (!isStreaming && progress.nodesCount === 0 && progress.edgesCount === 0) {
+  const [shouldFadeOut, setShouldFadeOut] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Show component when streaming starts or there's progress
+  useEffect(() => {
+    if (isStreaming) {
+      setIsVisible(true);
+      setShouldFadeOut(false);
+    }
+  }, [isStreaming, progress.nodesCount, progress.edgesCount]);
+
+  // Handle fade-out when streaming completes
+  useEffect(() => {
+    if (!isStreaming) {
+      // Show completion for a moment, then start fade-out
+      const fadeTimer = setTimeout(() => {
+        setShouldFadeOut(true);
+        
+        // Hide completely after fade animation
+        const hideTimer = setTimeout(() => {
+          setIsVisible(false);
+        }, 500); // Match CSS transition duration
+        
+        return () => clearTimeout(hideTimer);
+      }, 2000); // Show completion for 2 seconds
+      
+      return () => clearTimeout(fadeTimer);
+    }
+  }, [isStreaming, progress.nodesCount, progress.edgesCount]);
+
+  if (!isVisible) {
     return null;
   }
 
   return (
-    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4 mb-4">
+    <div 
+      className={`bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4 mb-4 transition-all duration-500 ease-in-out ${
+        shouldFadeOut ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+      }`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center space-x-3">

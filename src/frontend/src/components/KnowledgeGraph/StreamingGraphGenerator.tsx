@@ -4,7 +4,6 @@ import { StoredGraph } from '@/utils/constants';
 import { useStreamingGraph } from '@/hooks/useStreamingGraph';
 import { ModelSelector, AvailableModel } from './UI/ModelSelector';
 import { StreamingProgress } from './UI/StreamingProgress';
-import { GraphVisualization } from './GraphVisualization';
 
 interface StreamingGraphGeneratorProps {
   onGraphGenerated: (graph: StoredGraph) => void;
@@ -21,8 +20,6 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
   
   const {
     isStreaming,
-    nodes,
-    edges,
     status,
     error,
     progress,
@@ -67,6 +64,7 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
       handledErrorRef.current = null;
     }
   }, [error, isStreaming]);
+
 
   const handleGenerate = async () => {
     if (!subject.trim()) return;
@@ -148,25 +146,6 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
         progress={progress}
         onCancel={handleCancel}
       />
-
-      {/* Real-time Graph Visualization */}
-      {(nodes.length > 0 || edges.length > 0) && (
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Live Graph Preview</h3>
-            <div className="text-sm text-gray-600">
-              Building in real-time...
-            </div>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <GraphVisualization 
-              graphData={{ nodes, edges }} 
-              model={selectedModel}
-              isStreaming={isStreaming}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
