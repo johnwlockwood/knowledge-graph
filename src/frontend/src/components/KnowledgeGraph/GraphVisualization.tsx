@@ -7,15 +7,17 @@ import { mapGraphData, getNetworkOptions, originalLabels, originalColors } from 
 
 interface GraphVisualizationProps {
   graphData: { nodes: ApiNode[]; edges: ApiEdge[] };
+  model?: string;
 }
 
-export function GraphVisualization({ graphData }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, model }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const edgesDataSetRef = useRef<DataSet<object> | null>(null);
   const [hoveredLabel, setHoveredLabel] = useState<{text: string, x: number, y: number} | null>(null);
 
   const currentGraphData = graphData || INITIAL_DATA;
+  const currentModel = model || 'gpt-3.5';
 
   useEffect(() => {
     // Initialize network when component mounts
@@ -114,34 +116,50 @@ export function GraphVisualization({ graphData }: GraphVisualizationProps) {
   }, [currentGraphData]);
 
   return (
-    <div 
-      ref={containerRef} 
-      className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl relative"
-    >
-      {/* Floating label overlay */}
-      {hoveredLabel && (
-        <div
-          className="absolute z-50 pointer-events-none"
-          style={{
-            left: hoveredLabel.x,
-            top: hoveredLabel.y,
-            transform: 'translate(-50%, -100%)'
+    <div className="relative">
+      {/* Model badge - positioned outside the vis-network container */}
+      {currentModel && (
+        <div 
+          className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg border border-gray-200 pointer-events-none"
+          style={{ 
+            zIndex: 1000,
+            position: 'absolute',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)'
           }}
         >
-          <div className="bg-white border-4 border-indigo-500 rounded-lg px-4 py-2 shadow-lg max-w-xs">
-            <div className="text-sm font-semibold text-gray-900 text-center">
-              {hoveredLabel.text}
-            </div>
-            {/* Arrow pointing down */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2">
-              <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-indigo-500"></div>
-              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
-                <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white"></div>
+          <span className="text-xs font-medium text-gray-700">Model: {currentModel}</span>
+        </div>
+      )}
+      
+      <div 
+        ref={containerRef} 
+        className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl relative"
+      >
+        {/* Floating label overlay */}
+        {hoveredLabel && (
+          <div
+            className="absolute z-50 pointer-events-none"
+            style={{
+              left: hoveredLabel.x,
+              top: hoveredLabel.y,
+              transform: 'translate(-50%, -100%)'
+            }}
+          >
+            <div className="bg-white border-4 border-indigo-500 rounded-lg px-4 py-2 shadow-lg max-w-xs">
+              <div className="text-sm font-semibold text-gray-900 text-center">
+                {hoveredLabel.text}
+              </div>
+              {/* Arrow pointing down */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2">
+                <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-indigo-500"></div>
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+                  <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white"></div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

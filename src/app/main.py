@@ -1,4 +1,5 @@
 import os
+import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +7,9 @@ from pydantic import BaseModel
 from graph import generate_graph
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 
@@ -25,8 +29,7 @@ class SubjectRequest(BaseModel):
 
 @app.post("/api/generate-graph")
 async def generate_knowledge_graph(request: SubjectRequest):
-    graph = generate_graph(request.subject)
-    return graph
+    return generate_graph(request.subject)
 
 
 if __name__ == "__main__":

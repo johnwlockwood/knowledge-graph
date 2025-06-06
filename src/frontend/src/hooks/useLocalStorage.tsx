@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { STORAGE_KEYS, ApiNode, ApiEdge } from '@/utils/constants';
 
 export function useLocalStorage<T>(key: string, defaultValue: T) {
   const [value, setValue] = useState<T>(() => {
@@ -44,7 +45,32 @@ export function saveToLocalStorage<T>(key: string, data: T): void {
 export function loadFromLocalStorage<T>(key: string, defaultValue: T): T {
   try {
     const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
+    if (!item) return defaultValue;
+    
+    const data = JSON.parse(item);
+    
+    // Migration for knowledge graphs: add model field if missing
+    if (key === STORAGE_KEYS.GRAPHS && Array.isArray(data)) {
+      type GraphMigration = {
+        id: string;
+        title: string;
+        data: {
+          nodes: ApiNode[];
+          edges: ApiEdge[];
+        };
+        createdAt: number;
+        subject: string;
+        model?: string;
+        isExample?: boolean;
+      };
+      
+      return data.map((graph: GraphMigration) => ({
+        ...graph,
+        model: graph.model || 'unknown'
+      })) as T;
+    }
+    
+    return data;
   } catch (error) {
     console.warn('Failed to load from localStorage:', error);
     return defaultValue;

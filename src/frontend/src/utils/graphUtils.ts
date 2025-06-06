@@ -2,21 +2,68 @@
 import { DataSet } from 'vis-data';
 import { ApiNode, ApiEdge, StoredGraph } from './constants';
 
+// Function to convert RGB component to hex
+function rgbToHex(value: number): string {
+  const hex = value.toString(16);
+  return hex.length === 1 ? "0" + hex : hex;
+}
+
+// Cache for contrast color calculations
+const colorCache = new Map<string, string>();
+
 // Function to calculate color brightness and return appropriate text color
-export function getContrastColor(hexColor: string): string {
-  // Remove # if present
-  const color = hexColor.replace('#', '');
+export function getContrastColor(colorInput: string): string {
+  // Return early for server-side rendering
+  if (typeof window === 'undefined') {
+    return '#000000';
+  }
+
+  // Return cached result if available
+  if (colorCache.has(colorInput)) {
+    return colorCache.get(colorInput)!;
+  }
+
+  // Convert any CSS color to hex
+  try {
+    const tempElement = document.createElement('span');
+    tempElement.style.color = colorInput;
+    tempElement.style.display = 'none';
+    document.body.appendChild(tempElement);
+
+    const computedColor = getComputedStyle(tempElement).color;
+    document.body.removeChild(tempElement);
+
+    const rgbValues = computedColor.match(/\d+/g)?.map(Number).slice(0, 3);
+    
+    if (rgbValues && rgbValues.length === 3) {
+      const hexColor = `#${rgbToHex(rgbValues[0])}${rgbToHex(rgbValues[1])}${rgbToHex(rgbValues[2])}`;
+      const cleanHex = hexColor.replace('#', '');
+      
+      // Parse RGB values
+      const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+      const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+      const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+
+      // Calculate relative luminance (WCAG 2.0 formula)
+      const rSRGB = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+      const gSRGB = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
+      const bSRGB = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
+      
+      const luminance = 0.2126 * rSRGB + 0.7152 * gSRGB + 0.0722 * bSRGB;
+
+      // Determine contrast color
+      const contrastColor = luminance > 0.179 ? '#000000' : '#FFFFFF';
+      
+      // Cache result
+      colorCache.set(colorInput, contrastColor);
+      return contrastColor;
+    }
+  } catch (e) {
+    console.error('Error converting color:', e);
+  }
   
-  // Parse RGB values
-  const r = parseInt(color.substr(0, 2), 16);
-  const g = parseInt(color.substr(2, 2), 16);
-  const b = parseInt(color.substr(4, 2), 16);
-  
-  // Calculate luminance using standard formula
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  
-  // Return white for dark backgrounds, black for light backgrounds
-  return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  // Fallback to black text if conversion fails
+  return '#000000';
 }
 
 // Function to truncate edge labels for better readability
@@ -26,7 +73,7 @@ export function truncateLabel(label: string, maxLength: number = 20): string {
 
 // Generate unique graph ID
 export function generateGraphId(): string {
-  return `graph-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `graph-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 // Get graph title from graph data
