@@ -40,15 +40,21 @@ export function useModal({
     };
   }, [isOpen, onClose, enableEscKey]);
 
+  // Create a ref to store the original overflow value
+  const originalBodyOverflow = useRef<string>('');
+
   // Handle body scroll prevention
   useEffect(() => {
     if (isOpen && preventBodyScroll) {
+      // Capture the original overflow value
+      originalBodyOverflow.current = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
     }
 
     return () => {
       if (preventBodyScroll) {
-        document.body.style.overflow = 'unset';
+        // Restore the original overflow value
+        document.body.style.overflow = originalBodyOverflow.current;
       }
     };
   }, [isOpen, preventBodyScroll]);
