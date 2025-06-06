@@ -22,6 +22,8 @@ export function DeleteConfirmModal({ isOpen, graphTitle, onConfirm, onCancel }: 
   return (
     <div 
       ref={modalRef}
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
