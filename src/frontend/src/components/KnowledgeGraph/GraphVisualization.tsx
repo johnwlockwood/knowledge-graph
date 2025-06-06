@@ -328,7 +328,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       {/* Model badge */}
       {currentModel && (
         <div 
-          className={`absolute top-4 ${isFullscreenMode ? 'left-4' : 'right-4'} bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg border border-gray-200 pointer-events-none z-10`}
+          className={`absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg border border-gray-200 pointer-events-none z-10`}
         >
           <span className="text-xs font-medium text-gray-700">Model: {currentModel}</span>
         </div>
@@ -389,7 +389,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       {renderGraphContent(false)}
 
       {/* Fullscreen modal */}
-      <FullscreenModal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)}>
+      <FullscreenModal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)} includeCloseButton={false}>
         {renderGraphContent(true)}
       </FullscreenModal>
     </>
