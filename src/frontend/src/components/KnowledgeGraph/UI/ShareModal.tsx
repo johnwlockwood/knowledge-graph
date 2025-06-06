@@ -11,6 +11,8 @@ import {
   ExportFormat,
   ValidationResult
 } from '../../../utils/shareUtils';
+import { useModal } from '../../../hooks/useModal';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -38,14 +40,22 @@ export function ShareModal({
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
-
   const handleClose = () => {
     setMode('main');
     setImportData('');
     setValidationResult(null);
     onClose();
   };
+
+  const { modalRef, handleBackdropClick } = useModal({
+    isOpen,
+    onClose: handleClose,
+    enableEscKey: true,
+    enableBackdropClick: true,
+    preventBodyScroll: false
+  });
+
+  if (!isOpen) return null;
 
   const handleExport = () => {
     try {
@@ -391,8 +401,15 @@ export function ShareModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+        {/* Close button */}
+        <ModalCloseButton onClick={handleClose} />
+        
         <div className="p-6">
           {mode === 'main' && renderMainMode()}
           {mode === 'export' && renderExportMode()}
