@@ -8,13 +8,25 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from graph import agenerate_graph, stream_generate_graph, stream_generate_users
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
 
-logger = logging.getLogger(__name__)
+# Configure package-level logger
+logger = logging.getLogger("app")  # Parent logger for "app" package
 logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+logger.debug("Application starting up")
+
+# Module-specific logger
+module_logger = logging.getLogger(__name__)  # __name__ = "app.main"
 
 results = {}  # In-memory storage (use Redis in production)
 
@@ -68,29 +80,37 @@ async def generate_knowledge_graph(request: SubjectRequest):
 
 
 async def generate_graph_stream_response(subject: str, model: str):
-    """Generate knowledge graph entities based on the subject using the specified model."""
+    """Generate knowledge graph entities based on the subject using
+    the specified model."""
     graph_entities = stream_generate_graph(subject, model)
-    yield (
-        json.dumps(
-            {
-                "result": {
-                    "id": str(uuid4()),
-                    "createdAt": int(time.time() * 1000),
-                    "subject": subject,
-                    "model": model,
-                    "status": "streaming",
-                    "message": "Streaming knowledge graph entities",
-                }
-            }
-        )
-        + "\n"
-    )
-    async for entity in graph_entities:
-        if entity is None:
-            continue
-        yield entity.model_dump_json() + "\n"
+    metadata = {
+        "result": {
+            "id": str(uuid4()),
+            "createdAt": int(time.time() * 1000),
+            "subject": subject,
+            "model": model,
+            "status": "streaming",
+            "message": "Streaming knowledge graph entities",
+        }
+    }
+    yield (json.dumps(metadata) + "\n")
+    logger.info("yielded metadata")
+    print(f"printing metadata {metadata}")
+    try:
+        async for entity in graph_entities:
+            if entity is None:
+                continue
+            logger.debug(f"yielding entity: {entity}")
+            yield entity.model_dump_json() + "\n"
 
-    yield json.dumps({"result": "graph complete"}) + "\n"
+        logger.info("complete")
+        yield json.dumps({"result": "graph complete"}) + "\n"
+    except ValidationError:
+        logger.error("Error generating knowledge graph")
+        yield json.dumps({"result": "error"}) + "\n"
+    except Exception as e:
+        logger.error(f"Error generating knowledge graph: {e}")
+        yield json.dumps({"result": "error"}) + "\n"
 
 
 class StreamingGraphRequest(BaseModel):
@@ -105,7 +125,7 @@ class StreamingGraphRequest(BaseModel):
 @app.post("/api/stream-generate-graph")
 async def stream_generate_knowledge_graph(request: StreamingGraphRequest):
     """
-    Stream knowledge graph entities based on the subject using 
+    Stream knowledge graph entities based on the subject using
     the specified model.
     This endpoint streams the graph entities as they are generated.
     """
@@ -155,4 +175,4 @@ async def get_result(task_id: str):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=9000)
+    uvicorn.run(app, host="0.0.0.0", port=9000, log_level="debug")

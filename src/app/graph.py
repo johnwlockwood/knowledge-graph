@@ -7,8 +7,16 @@ from collections.abc import AsyncGenerator
 from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # __name__ = "app.graph"
 logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+logger.debug("----Debug message from graph-----")
 
 client = instructor.from_openai(AsyncOpenAI())
 
@@ -87,7 +95,9 @@ async def agenerate_graph(input: str) -> dict:
 async def stream_generate_graph(
     input: str, model: str
 ) -> AsyncGenerator[KnowledgeGraphEntity | None, None]:
-    """Stream a knowledge graph based on the input text using the specified model."""
+    """Stream a knowledge graph based on the input text
+    using the specified model."""
+    logger.debug("Generating graph for subject")
     graph_model = model if model in MODELS else MODELS[0]
     logger.info(f"model requested: {model}, model used: {graph_model}")
     graph_entities = client.chat.completions.create_iterable(
@@ -104,6 +114,7 @@ async def stream_generate_graph(
         response_model=KnowledgeGraphEntity,
     )
     # "o4-mini-2025-04-16",
+    logger.debug("Debug message from graph")
     async for entity in graph_entities:
         yield entity
 
@@ -111,7 +122,7 @@ async def stream_generate_graph(
 async def stream_generate_users(
     input: str, number_of_users: int, model: str
 ) -> AsyncGenerator[User | None, None]:
-    """Stream a knowledge graph based on the input text 
+    """Stream a knowledge graph based on the input text
     using the specified model."""
     graph_model = model if model in MODELS else MODELS[0]
     logger.info(f"users requested from input: {input}")

@@ -290,6 +290,7 @@ export function validateGraphData(data: unknown): ValidationResult {
         title: (typeof graph.title === 'string' ? graph.title : `Imported Graph ${i + 1}`),
         subject: (typeof graph.subject === 'string' ? graph.subject : 'Imported'),
         createdAt: (typeof graph.createdAt === 'number' ? graph.createdAt : Date.now()),
+        model: (typeof graph.model === 'string' ? graph.model : 'unknown'),
         data: {
           nodes: nodes.map((nodeData) => {
             const node = nodeData as Record<string, unknown>;
