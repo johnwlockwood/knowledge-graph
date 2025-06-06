@@ -1,10 +1,10 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useGraphData } from '@/hooks/useGraphData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getGraphTitle } from '@/utils/graphUtils';
 import { INITIAL_DATA } from '@/utils/constants';
-import { GraphGenerator } from './GraphGenerator';
+import { StreamingGraphGenerator } from './StreamingGraphGenerator';
 import { GraphNavigation } from './GraphNavigation';
 import { GraphVisualization } from './GraphVisualization';
 import { Toast } from './UI/Toast';
@@ -16,6 +16,9 @@ export default function KnowledgeGraph() {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // Ref to store the streaming reset function
+  const streamingResetRef = useRef<(() => void) | null>(null);
 
   const {
     allGraphs,
@@ -55,6 +58,12 @@ export default function KnowledgeGraph() {
   const handleCancelDelete = () => {
     setShowDeleteConfirm(null);
   };
+
+  // Handle streaming reset state callback
+  const handleStreamingResetState = (resetFn: () => void) => {
+    streamingResetRef.current = resetFn;
+  };
+
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -121,9 +130,10 @@ export default function KnowledgeGraph() {
         />
         
         {/* Graph Generator */}
-        <GraphGenerator
+        <StreamingGraphGenerator
           onGraphGenerated={addGraph}
           onToast={handleToast}
+          onResetState={handleStreamingResetState}
         />
         
         {/* Graph Display Container */}
@@ -152,7 +162,8 @@ export default function KnowledgeGraph() {
           {visibleGraphs.length > 0 && (
             <GraphVisualization 
               graphData={currentGraphData} 
-              model={currentModel} 
+              model={currentModel}
+              graphId={currentGraph?.id}
             />
           )}
         </div>

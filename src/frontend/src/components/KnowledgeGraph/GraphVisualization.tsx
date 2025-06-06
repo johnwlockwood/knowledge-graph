@@ -8,19 +8,25 @@ import { mapGraphData, getNetworkOptions, originalLabels, originalColors } from 
 interface GraphVisualizationProps {
   graphData: { nodes: ApiNode[]; edges: ApiEdge[] };
   model?: string;
+  isStreaming?: boolean;
+  graphId?: string; // Optional graph ID to detect graph changes
 }
 
-export function GraphVisualization({ graphData, model }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, model, isStreaming = false, graphId }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const nodesDataSetRef = useRef<DataSet<object> | null>(null);
   const edgesDataSetRef = useRef<DataSet<object> | null>(null);
   const [hoveredLabel, setHoveredLabel] = useState<{text: string, x: number, y: number} | null>(null);
+  const lastNodeCountRef = useRef<number>(0);
+  const lastEdgeCountRef = useRef<number>(0);
+  const currentGraphIdRef = useRef<string | undefined>(undefined);
 
   const currentGraphData = graphData || INITIAL_DATA;
   const currentModel = model || 'gpt-3.5';
 
+  // Initialize network on mount
   useEffect(() => {
-    // Initialize network when component mounts
     const initializeNetwork = async () => {
       if (!containerRef.current) return;
 
@@ -34,11 +40,19 @@ export function GraphVisualization({ graphData, model }: GraphVisualizationProps
         console.warn('Font loading failed, proceeding with fallback:', error);
       }
 
+      const mappedData = mapGraphData(currentGraphData, edgesDataSetRef);
+      nodesDataSetRef.current = mappedData.nodes as DataSet<object>;
+      edgesDataSetRef.current = mappedData.edges as DataSet<object>;
+
       networkRef.current = new Network(
         containerRef.current, 
-        mapGraphData(currentGraphData, edgesDataSetRef), 
+        { nodes: nodesDataSetRef.current, edges: edgesDataSetRef.current },
         getNetworkOptions()
       );
+
+      // Store initial counts
+      lastNodeCountRef.current = currentGraphData.nodes.length;
+      lastEdgeCountRef.current = currentGraphData.edges.length;
 
       // Add hover event listeners for custom overlay label
       networkRef.current.on("hoverEdge", (params) => {
@@ -113,7 +127,180 @@ export function GraphVisualization({ graphData, model }: GraphVisualizationProps
         networkRef.current.destroy();
       }
     };
-  }, [currentGraphData]);
+  }, [currentGraphData]); // Include currentGraphData in dependencies
+
+  // Handle graph changes and incremental updates
+  useEffect(() => {
+    if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
+
+    const currentNodeCount = currentGraphData.nodes.length;
+    const currentEdgeCount = currentGraphData.edges.length;
+
+    // Check if this is a different graph (graph ID changed)
+    const isNewGraph = graphId !== currentGraphIdRef.current;
+    
+    if (isNewGraph) {
+      // Completely rebuild the graph data for a new graph
+      currentGraphIdRef.current = graphId;
+      
+      // Clear existing data
+      nodesDataSetRef.current.clear();
+      edgesDataSetRef.current.clear();
+      originalLabels.clear();
+      originalColors.clear();
+      
+      // Rebuild with all current data using the same approach as initialization
+      const mappedNodes = currentGraphData.nodes.map(node => ({
+        id: node.id,
+        label: node.label,
+        color: {
+          background: node.color,
+          border: node.color,
+          highlight: {
+            background: node.color,
+            border: node.color
+          }
+        },
+        font: {
+          color: '#ffffff',
+          size: 16,
+          face: 'Inter, system-ui, sans-serif'
+        },
+        borderWidth: 2,
+        shadow: true
+      }));
+
+      const mappedEdges = currentGraphData.edges.map(edge => {
+        const edgeId = `${edge.source}-${edge.target}`;
+        
+        // Store original label for hover functionality
+        originalLabels.set(edgeId, edge.label);
+        originalColors.set(edgeId, edge.color);
+
+        return {
+          id: edgeId,
+          from: edge.source,
+          to: edge.target,
+          label: '', // Hide label by default
+          color: {
+            color: edge.color,
+            highlight: edge.color,
+            hover: edge.color
+          },
+          width: 2,
+          arrows: {
+            to: {
+              enabled: true,
+              scaleFactor: 0.8
+            }
+          },
+          font: {
+            size: 12,
+            face: 'Inter, system-ui, sans-serif',
+            strokeWidth: 3,
+            strokeColor: '#ffffff'
+          },
+          smooth: {
+            type: 'continuous',
+            roundness: 0.2
+          }
+        };
+      });
+      
+      // Add the mapped data
+      nodesDataSetRef.current.add(mappedNodes);
+      edgesDataSetRef.current.add(mappedEdges);
+      
+      // Update counts
+      lastNodeCountRef.current = currentNodeCount;
+      lastEdgeCountRef.current = currentEdgeCount;
+      
+      // Fit the view to show the new graph
+      setTimeout(() => {
+        networkRef.current?.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+      }, 100);
+    } else {
+      // Incremental updates for the same graph (streaming)
+      
+      // Add new nodes
+      if (currentNodeCount > lastNodeCountRef.current) {
+        const newNodes = currentGraphData.nodes.slice(lastNodeCountRef.current);
+        const mappedNewNodes = newNodes.map(node => ({
+          id: node.id,
+          label: node.label,
+          color: {
+            background: node.color,
+            border: node.color,
+            highlight: {
+              background: node.color,
+              border: node.color
+            }
+          },
+          font: {
+            color: '#ffffff',
+            size: 16,
+            face: 'Inter, system-ui, sans-serif'
+          },
+          borderWidth: 2,
+          shadow: true
+        }));
+
+        nodesDataSetRef.current.add(mappedNewNodes);
+        lastNodeCountRef.current = currentNodeCount;
+
+        // Animate new nodes if streaming
+        if (isStreaming) {
+          setTimeout(() => {
+            networkRef.current?.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+          }, 100);
+        }
+      }
+
+      // Add new edges
+      if (currentEdgeCount > lastEdgeCountRef.current) {
+        const newEdges = currentGraphData.edges.slice(lastEdgeCountRef.current);
+        const mappedNewEdges = newEdges.map(edge => {
+          const edgeId = `${edge.source}-${edge.target}`;
+          
+          // Store original label for hover functionality
+          originalLabels.set(edgeId, edge.label);
+          originalColors.set(edgeId, edge.color);
+
+          return {
+            id: edgeId,
+            from: edge.source,
+            to: edge.target,
+            label: '', // Hide label by default
+            color: {
+              color: edge.color,
+              highlight: edge.color,
+              hover: edge.color
+            },
+            width: 2,
+            arrows: {
+              to: {
+                enabled: true,
+                scaleFactor: 0.8
+              }
+            },
+            font: {
+              size: 12,
+              face: 'Inter, system-ui, sans-serif',
+              strokeWidth: 3,
+              strokeColor: '#ffffff'
+            },
+            smooth: {
+              type: 'continuous',
+              roundness: 0.2
+            }
+          };
+        });
+
+        edgesDataSetRef.current.add(mappedNewEdges);
+        lastEdgeCountRef.current = currentEdgeCount;
+      }
+    }
+  }, [currentGraphData, isStreaming, graphId]);
 
   return (
     <div className="relative">
