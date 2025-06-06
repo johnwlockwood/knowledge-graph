@@ -31,6 +31,15 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
     resetState,
   } = useStreamingGraph();
 
+  const resetStateRef = useRef(resetState);
+  const onToastRef = useRef(onToast);
+  
+  // Update refs when functions change
+  useEffect(() => {
+    resetStateRef.current = resetState;
+    onToastRef.current = onToast;
+  }, [resetState, onToast]);
+
   // Expose resetState function to parent component
   useEffect(() => {
     if (onResetState) {
@@ -42,15 +51,22 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
   useEffect(() => {
     if (error && !isStreaming && error !== handledErrorRef.current) {
       handledErrorRef.current = error;
-      onToast(error, 'error');
+      onToastRef.current(error, 'error');
       setSubject(''); // Reset input on error
+      
+      // Auto-cleanup partial data after showing error (similar to toast duration)
+      const cleanupTimer = setTimeout(() => {
+        resetStateRef.current();
+      }, 3500); // Slightly longer than typical toast duration
+      
+      return () => clearTimeout(cleanupTimer);
     }
     
     // Reset the handled error when there's no error
     if (!error) {
       handledErrorRef.current = null;
     }
-  }, [error, isStreaming, onToast]);
+  }, [error, isStreaming]);
 
   const handleGenerate = async () => {
     if (!subject.trim()) return;

@@ -3,6 +3,7 @@ import os
 import json
 import logging
 import time
+import collections.abc
 from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks
@@ -40,6 +41,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+async def async_enumerate(
+    iterable: collections.abc.AsyncIterator, start: int = 0
+):
+    """Asynchronously enumerate an async
+    iterator from a given start value."""
+    i = start
+    async for item in iterable:
+        yield i, item
+        i += 1
 
 
 class SubjectRequest(BaseModel):
@@ -90,7 +102,7 @@ async def generate_graph_stream_response(subject: str, model: str):
             "subject": subject,
             "model": model,
             "message": "Streaming knowledge graph entities",
-        }
+        },
     }
     yield (json.dumps(metadata) + "\n")
     graph_entities = stream_generate_graph(subject, model)
@@ -98,7 +110,9 @@ async def generate_graph_stream_response(subject: str, model: str):
     try:
         if os.getenv("ERROR_STREAM") == "TRUE":
             raise Exception("debug error")
-        async for entity in graph_entities:
+        async for i, entity in async_enumerate(graph_entities):
+            if os.getenv("ERROR_STREAM") == str(i):
+                raise Exception(f"debug error on {i}")
             if entity is None:
                 continue
             logger.debug(f"yielding entity: {entity}")
