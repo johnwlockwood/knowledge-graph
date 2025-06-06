@@ -84,18 +84,17 @@ async def generate_graph_stream_response(subject: str, model: str):
     the specified model."""
     graph_entities = stream_generate_graph(subject, model)
     metadata = {
+        "status": "streaming",
         "result": {
             "id": str(uuid4()),
             "createdAt": int(time.time() * 1000),
             "subject": subject,
             "model": model,
-            "status": "streaming",
             "message": "Streaming knowledge graph entities",
         }
     }
     yield (json.dumps(metadata) + "\n")
-    logger.info("yielded metadata")
-    print(f"printing metadata {metadata}")
+    logger.info(f"yielded metadata {metadata}")
     try:
         async for entity in graph_entities:
             if entity is None:
@@ -104,13 +103,16 @@ async def generate_graph_stream_response(subject: str, model: str):
             yield entity.model_dump_json() + "\n"
 
         logger.info("complete")
-        yield json.dumps({"result": "graph complete"}) + "\n"
+        yield (
+            json.dumps({"result": "graph complete", "status": "complete"})
+            + "\n"
+        )
     except ValidationError:
         logger.error("Error generating knowledge graph")
-        yield json.dumps({"result": "error"}) + "\n"
+        yield json.dumps({"result": "error", "status": "error"}) + "\n"
     except Exception as e:
         logger.error(f"Error generating knowledge graph: {e}")
-        yield json.dumps({"result": "error"}) + "\n"
+        yield json.dumps({"result": "error", "status": "error"}) + "\n"
 
 
 class StreamingGraphRequest(BaseModel):

@@ -127,7 +127,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
         networkRef.current.destroy();
       }
     };
-  }, []); // Only run on mount
+  }, [currentGraphData]); // Include currentGraphData in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {

@@ -116,7 +116,7 @@ export function useStreamingGraph() {
               const data = JSON.parse(line);
               
               // Handle initial result metadata
-              if (data.result && typeof data.result === 'object' && data.result.status === 'streaming') {
+              if (data.status && data.status === 'streaming') {
                 streamingResultRef.current = data.result;
                 setState(prev => ({
                   ...prev,
@@ -126,7 +126,7 @@ export function useStreamingGraph() {
               }
 
               // Handle completion
-              if (data.result === 'graph complete') {
+              if (data.status && data.status === 'complete') {
                 const finalGraph = createStoredGraph(
                   currentNodesRef.current,
                   currentEdgesRef.current,
