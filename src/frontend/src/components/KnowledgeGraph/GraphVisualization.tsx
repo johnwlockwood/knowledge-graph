@@ -4,6 +4,7 @@ import { DataSet } from 'vis-data';
 import { Network } from 'vis-network/standalone';
 import { ApiNode, ApiEdge, INITIAL_DATA } from '@/utils/constants';
 import { mapGraphData, getNetworkOptions, originalLabels, originalColors } from '@/utils/graphUtils';
+import { FullscreenModal } from './UI/FullscreenModal';
 
 interface GraphVisualizationProps {
   graphData: { nodes: ApiNode[]; edges: ApiEdge[] };
@@ -15,9 +16,11 @@ interface GraphVisualizationProps {
 export function GraphVisualization({ graphData, model, isStreaming = false, graphId }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const nodesDataSetRef = useRef<DataSet<object> | null>(null);
   const edgesDataSetRef = useRef<DataSet<object> | null>(null);
   const [hoveredLabel, setHoveredLabel] = useState<{text: string, x: number, y: number} | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const lastNodeCountRef = useRef<number>(0);
   const lastEdgeCountRef = useRef<number>(0);
   const currentGraphIdRef = useRef<string | undefined>(undefined);
@@ -25,10 +28,22 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
   const currentGraphData = graphData || INITIAL_DATA;
   const currentModel = model || 'gpt-3.5';
 
-  // Initialize network on mount
+  // Handle fullscreen toggle
+  const toggleFullscreen = () => {
+    setIsFullscreen(prev => !prev);
+  };
+
+  // Initialize network on mount and when fullscreen changes
   useEffect(() => {
     const initializeNetwork = async () => {
-      if (!containerRef.current) return;
+      const currentContainer = isFullscreen ? fullscreenContainerRef.current : containerRef.current;
+      if (!currentContainer) return;
+
+      // Destroy existing network if it exists
+      if (networkRef.current) {
+        networkRef.current.destroy();
+        networkRef.current = null;
+      }
 
       // Wait for Inter font to load before initializing the network
       try {
@@ -45,7 +60,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       edgesDataSetRef.current = mappedData.edges as DataSet<object>;
 
       networkRef.current = new Network(
-        containerRef.current, 
+        currentContainer, 
         { nodes: nodesDataSetRef.current, edges: edgesDataSetRef.current },
         getNetworkOptions()
       );
@@ -59,7 +74,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
         const edgeId = params.edge;
         const originalLabel = originalLabels.get(edgeId);
         
-        if (originalLabel && networkRef.current && containerRef.current && edgesDataSetRef.current) {
+        if (originalLabel && networkRef.current && edgesDataSetRef.current) {
           // Get the edge data
           const edgeData = edgesDataSetRef.current.get(edgeId);
           
@@ -117,6 +132,11 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
           });
         }
       });
+
+      // Fit the view after initialization
+      networkRef.current.once('afterDrawing', () => {
+        networkRef.current?.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
+      });
     };
 
     initializeNetwork();
@@ -127,7 +147,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
         networkRef.current.destroy();
       }
     };
-  }, [currentGraphData]); // Include currentGraphData in dependencies
+  }, [currentGraphData, isFullscreen]); // Include isFullscreen in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {
@@ -216,9 +236,9 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       lastEdgeCountRef.current = currentEdgeCount;
       
       // Fit the view to show the new graph
-      setTimeout(() => {
+      networkRef.current.once('afterDrawing', () => {
         networkRef.current?.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
-      }, 100);
+      });
     } else {
       // Incremental updates for the same graph (streaming)
       
@@ -250,9 +270,9 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
 
         // Animate new nodes if streaming
         if (isStreaming) {
-          setTimeout(() => {
+          networkRef.current.once('afterDrawing', () => {
             networkRef.current?.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
-          }, 100);
+          });
         }
       }
 
@@ -302,25 +322,38 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
     }
   }, [currentGraphData, isStreaming, graphId]);
 
-  return (
-    <div className="relative">
-      {/* Model badge - positioned outside the vis-network container */}
+  // Render graph content
+  const renderGraphContent = (isFullscreenMode: boolean = false) => (
+    <div className="relative w-full h-full">
+      {/* Model badge */}
       {currentModel && (
         <div 
-          className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg border border-gray-200 pointer-events-none"
-          style={{ 
-            zIndex: 1000,
-            position: 'absolute',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)'
-          }}
+          className={`absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg border border-gray-200 pointer-events-none z-10`}
         >
           <span className="text-xs font-medium text-gray-700">Model: {currentModel}</span>
         </div>
       )}
+
+      {/* Fullscreen toggle button */}
+      <button
+        onClick={toggleFullscreen}
+        className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-lg border transition-all duration-200 hover:scale-110 ${isFullscreenMode ? 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200' : 'bg-white/80 hover:bg-white/90 backdrop-blur-sm border-gray-200 text-gray-700'}`}
+        title={isFullscreenMode ? "Exit fullscreen" : "Enter fullscreen"}
+      >
+        {isFullscreenMode ? (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        )}
+      </button>
       
       <div 
-        ref={containerRef} 
-        className="h-[600px] w-full border-2 border-dashed border-gray-300 rounded-xl relative"
+        ref={isFullscreenMode ? fullscreenContainerRef : containerRef} 
+        className={`w-full ${isFullscreenMode ? 'h-full' : 'h-[600px]'} ${isFullscreenMode ? '' : 'border-2 border-dashed border-gray-300 rounded-xl'} relative`}
       >
         {/* Floating label overlay */}
         {hoveredLabel && (
@@ -348,5 +381,17 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
         )}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Normal view */}
+      {renderGraphContent(false)}
+
+      {/* Fullscreen modal */}
+      <FullscreenModal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)} includeCloseButton={false}>
+        {renderGraphContent(true)}
+      </FullscreenModal>
+    </>
   );
 }
