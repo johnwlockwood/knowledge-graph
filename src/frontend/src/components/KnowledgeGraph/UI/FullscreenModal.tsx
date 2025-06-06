@@ -44,7 +44,7 @@ export function FullscreenModal({ isOpen, onClose, children, includeCloseButton}
   return createPortal(
     <div
       ref={modalRef}
-      className="fixed inset-0 z-50 bg-gray-100 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-gray-100 flex items-center justify-center"
       onClick={handleBackdropClick}
     >
       <div className="relative w-full h-full max-w-none max-h-none">
