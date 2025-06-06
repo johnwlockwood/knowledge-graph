@@ -30,7 +30,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
 
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    setIsFullscreen(prev => !prev);
   };
 
   // Initialize network on mount and when fullscreen changes
@@ -134,9 +134,9 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       });
 
       // Fit the view after initialization
-      setTimeout(() => {
+      networkRef.current.once('afterDrawing', () => {
         networkRef.current?.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
-      }, 100);
+      });
     };
 
     initializeNetwork();
@@ -236,9 +236,9 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       lastEdgeCountRef.current = currentEdgeCount;
       
       // Fit the view to show the new graph
-      setTimeout(() => {
+      networkRef.current.once('afterDrawing', () => {
         networkRef.current?.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
-      }, 100);
+      });
     } else {
       // Incremental updates for the same graph (streaming)
       
@@ -270,9 +270,9 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
 
         // Animate new nodes if streaming
         if (isStreaming) {
-          setTimeout(() => {
+          networkRef.current.once('afterDrawing', () => {
             networkRef.current?.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
-          }, 100);
+          });
         }
       }
 
