@@ -60,6 +60,8 @@ MODELS = [
     "gpt-3.5-turbo-0125",
     "gpt-3.5-turbo-16k-0613",
     "o4-mini-2025-04-16",
+    "gpt-4.1-2025-04-14",
+    "gpt-4o-2024-08-06",
 ]
 # GRAPH_MODEL = "gpt-3.5-turbo-16k"
 GRAPH_MODEL = "o4-mini-2025-04-16"
@@ -137,7 +139,6 @@ async def stream_generate_users(
         ],
         response_model=User,
     )
-    # "o4-mini-2025-04-16",
     async for entity in graph_entities:
         yield entity
 

@@ -5,7 +5,9 @@ import { createPortal } from 'react-dom';
 export type AvailableModel = 
   | "gpt-4o-mini-2024-07-18"
   | "gpt-4.1-mini-2025-04-14" 
-  | "o4-mini-2025-04-16";
+  | "o4-mini-2025-04-16" 
+  | "gpt-4.1-2025-04-14"
+  | "gpt-4o-2024-08-06";
 
 interface ModelSelectorProps {
   selectedModel: AvailableModel;
@@ -28,6 +30,16 @@ const MODEL_OPTIONS: { value: AvailableModel; label: string; description: string
     value: "o4-mini-2025-04-16",
     label: "O4 Mini",
     description: "Latest model with improved accuracy"
+  },
+  {
+    value: "gpt-4.1-2025-04-14",
+    label: "GPT-4.1",
+    description: "Flagship GPT model for complex tasks"
+  },
+  {
+    value: "gpt-4o-2024-08-06",
+    label: "GPT-4o",
+    description: "Fast, intelligent, flexible GPT model"
   }
 ];
 
