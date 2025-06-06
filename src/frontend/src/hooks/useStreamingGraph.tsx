@@ -60,7 +60,7 @@ export function useStreamingGraph() {
     currentNodesRef.current = [];
     currentEdgesRef.current = [];
     streamingResultRef.current = null;
-    
+
     setState({
       isStreaming: true,
       nodes: [],
@@ -100,12 +100,12 @@ export function useStreamingGraph() {
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) break;
 
         // Decode the chunk and add to buffer
         buffer += decoder.decode(value, { stream: true });
-        
+
         // Process complete lines
         const lines = buffer.split('\n');
         buffer = lines.pop() || ''; // Keep incomplete line in buffer
@@ -114,7 +114,18 @@ export function useStreamingGraph() {
           if (line.trim()) {
             try {
               const data = JSON.parse(line);
-              
+
+              // Handle server errors
+              if (data.status === 'error' && data.result === 'error') {
+                setState(prev => ({
+                  ...prev,
+                  isStreaming: false,
+                  error: 'Failed to generate knowledge graph',
+                  status: 'Error',
+                }));
+                return;
+              }
+
               // Handle initial result metadata
               if (data.status && data.status === 'streaming') {
                 streamingResultRef.current = data.result;
@@ -134,13 +145,17 @@ export function useStreamingGraph() {
                   subject,
                   model
                 );
-                
+
                 setState(prev => ({
                   ...prev,
                   isStreaming: false,
                   status: 'Complete',
+                  progress: {
+                    nodesCount: 0,
+                    edgesCount: 0,
+                  },
                 }));
-                
+
                 onComplete(finalGraph);
                 return;
               }
@@ -148,7 +163,7 @@ export function useStreamingGraph() {
               // Handle streaming entities
               if (data.type && data.entity) {
                 const entity: StreamingEntity = data;
-                
+
                 if (entity.type === 'node') {
                   const newNode = entity.entity as ApiNode;
                   currentNodesRef.current = [...currentNodesRef.current, newNode];
@@ -216,7 +231,7 @@ export function useStreamingGraph() {
     currentEdgesRef.current = [];
     streamingResultRef.current = null;
     abortControllerRef.current = null;
-    
+
     setState({
       isStreaming: false,
       nodes: [],

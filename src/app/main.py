@@ -82,7 +82,6 @@ async def generate_knowledge_graph(request: SubjectRequest):
 async def generate_graph_stream_response(subject: str, model: str):
     """Generate knowledge graph entities based on the subject using
     the specified model."""
-    graph_entities = stream_generate_graph(subject, model)
     metadata = {
         "status": "streaming",
         "result": {
@@ -94,8 +93,11 @@ async def generate_graph_stream_response(subject: str, model: str):
         }
     }
     yield (json.dumps(metadata) + "\n")
+    graph_entities = stream_generate_graph(subject, model)
     logger.info(f"yielded metadata {metadata}")
     try:
+        if os.getenv("ERROR_STREAM") == "TRUE":
+            raise Exception("debug error")
         async for entity in graph_entities:
             if entity is None:
                 continue
@@ -108,10 +110,10 @@ async def generate_graph_stream_response(subject: str, model: str):
             + "\n"
         )
     except ValidationError:
-        logger.error("Error generating knowledge graph")
+        logger.exception("Error generating knowledge graph")
         yield json.dumps({"result": "error", "status": "error"}) + "\n"
     except Exception as e:
-        logger.error(f"Error generating knowledge graph: {e}")
+        logger.exception(f"Error generating knowledge graph: {e}")
         yield json.dumps({"result": "error", "status": "error"}) + "\n"
 
 
@@ -177,4 +179,4 @@ async def get_result(task_id: str):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=9000, log_level="debug")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")

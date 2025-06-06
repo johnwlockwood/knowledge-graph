@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StoredGraph } from '@/utils/constants';
 import { useStreamingGraph } from '@/hooks/useStreamingGraph';
 import { ModelSelector, AvailableModel } from './UI/ModelSelector';
@@ -15,6 +15,9 @@ interface StreamingGraphGeneratorProps {
 export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('gpt-4o-mini-2024-07-18');
+  
+  // Track handled errors to prevent infinite re-renders
+  const handledErrorRef = useRef<string | null>(null);
   
   const {
     isStreaming,
@@ -34,6 +37,20 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
       onResetState(resetState);
     }
   }, [onResetState, resetState]);
+
+  // Handle streaming errors - prevent infinite re-renders
+  useEffect(() => {
+    if (error && !isStreaming && error !== handledErrorRef.current) {
+      handledErrorRef.current = error;
+      onToast(error, 'error');
+      setSubject(''); // Reset input on error
+    }
+    
+    // Reset the handled error when there's no error
+    if (!error) {
+      handledErrorRef.current = null;
+    }
+  }, [error, isStreaming, onToast]);
 
   const handleGenerate = async () => {
     if (!subject.trim()) return;
@@ -115,13 +132,6 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
         progress={progress}
         onCancel={handleCancel}
       />
-      
-      {/* Error Display */}
-      {error && (
-        <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 animate-fade-in">
-          {error}
-        </div>
-      )}
 
       {/* Real-time Graph Visualization */}
       {(nodes.length > 0 || edges.length > 0) && (
