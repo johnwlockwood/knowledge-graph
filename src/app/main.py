@@ -5,14 +5,17 @@ import logging
 import time
 import collections.abc
 from typing import Literal
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 from graph import agenerate_graph, stream_generate_graph, stream_generate_users
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
+p = find_dotenv()
+if p:
+    load_dotenv(p)
+
 
 # Configure package-level logger
 logger = logging.getLogger("app")  # Parent logger for "app" package
