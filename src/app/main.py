@@ -17,6 +17,9 @@ if p:
     load_dotenv(p)
 
 
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
+
+
 # Configure package-level logger
 logger = logging.getLogger("app")  # Parent logger for "app" package
 logger.setLevel(logging.DEBUG)
@@ -39,7 +42,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_ORIGIN],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
