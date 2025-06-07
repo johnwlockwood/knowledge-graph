@@ -150,6 +150,11 @@ class StreamingGraphRequest(BaseModel):
     )
 
 
+@app.get("/")
+async def home():
+    return {"data": "hello world"}
+
+
 @app.post("/api/stream-generate-graph")
 async def stream_generate_knowledge_graph(request: StreamingGraphRequest):
     """
