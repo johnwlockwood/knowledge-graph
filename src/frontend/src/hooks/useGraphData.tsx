@@ -25,13 +25,20 @@ export function useGraphData() {
     setAllGraphs(allGraphsData);
     setVisibleGraphs(visibleGraphsData);
     
-    // Set initial graph to the latest (most recent)
+    // Set initial graph from localStorage or default to latest
     if (visibleGraphsData.length > 0) {
-      // Find the latest graph by createdAt timestamp
-      const latestGraphIndex = visibleGraphsData.reduce((latestIndex, graph, index) => {
-        return graph.createdAt > visibleGraphsData[latestIndex].createdAt ? index : latestIndex;
-      }, 0);
-      setCurrentGraphIndex(latestGraphIndex);
+      const savedIndex = loadFromLocalStorage<number>(STORAGE_KEYS.CURRENT_GRAPH_INDEX, -1);
+      
+      if (savedIndex >= 0 && savedIndex < visibleGraphsData.length) {
+        // Use saved index if valid
+        setCurrentGraphIndex(savedIndex);
+      } else {
+        // Fallback to latest graph by createdAt timestamp
+        const latestGraphIndex = visibleGraphsData.reduce((latestIndex, graph, index) => {
+          return graph.createdAt > visibleGraphsData[latestIndex].createdAt ? index : latestIndex;
+        }, 0);
+        setCurrentGraphIndex(latestGraphIndex);
+      }
     }
   }, []);
 
@@ -41,6 +48,13 @@ export function useGraphData() {
       saveToLocalStorage(STORAGE_KEYS.GRAPHS, allGraphs);
     }
   }, [allGraphs]);
+
+  // Save current graph index to localStorage whenever it changes
+  useEffect(() => {
+    if (visibleGraphs.length > 0) {
+      saveToLocalStorage(STORAGE_KEYS.CURRENT_GRAPH_INDEX, currentGraphIndex);
+    }
+  }, [currentGraphIndex, visibleGraphs.length]);
 
   // Navigation functions
   const goToPreviousGraph = useCallback(() => {
@@ -98,7 +112,7 @@ export function useGraphData() {
     
     const removedGraph = allGraphs.find(g => g.id === graphId);
     return removedGraph ? getGraphTitle(removedGraph) : 'Unknown Graph';
-  }, [allGraphs, visibleGraphs]);
+  }, [allGraphs, visibleGraphs, currentGraphIndex]);
 
   // Get current graph
   const currentGraph = visibleGraphs[currentGraphIndex];

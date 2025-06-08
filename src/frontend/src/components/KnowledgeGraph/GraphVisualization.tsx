@@ -20,21 +20,42 @@ interface GraphVisualizationProps {
   isStreaming?: boolean;
   graphId?: string; // Optional graph ID to detect graph changes
   onNodeSelect?: (nodeLabel: string) => void; // Callback for node selection
+  onNodeDeselect?: () => void; // Callback for node deselection
+  onGenerateFromNode?: (subject: string) => Promise<void>; // Callback to generate from selected node
 }
 
-export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const nodesDataSetRef = useRef<DataSet<object> | null>(null);
   const edgesDataSetRef = useRef<DataSet<object> | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedNodeLabel, setSelectedNodeLabel] = useState<string | null>(null);
+  const [isGeneratingFromNode, setIsGeneratingFromNode] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const lastNodeCountRef = useRef<number>(0);
   const lastEdgeCountRef = useRef<number>(0);
   const currentGraphIdRef = useRef<string | undefined>(undefined);
 
   const currentGraphData = graphData || INITIAL_DATA;
   const truncatedSubject = truncateLabel(metadata.subject, 20);
+
+  // Handle generation from selected node
+  const handleGenerateFromNode = async () => {
+    if (!selectedNodeLabel || !onGenerateFromNode) return;
+    
+    const generationSubject = `${metadata.subject} -> ${selectedNodeLabel}`;
+    setIsGeneratingFromNode(true);
+    
+    try {
+      await onGenerateFromNode(generationSubject);
+    } finally {
+      setIsGeneratingFromNode(false);
+      setSelectedNodeLabel(null);
+      setIsPreviewExpanded(false);
+    }
+  };
 
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
@@ -82,7 +103,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         networkRef.current?.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
       });
 
-      // Add node selection event listener
+      // Add node selection event listeners
       if (onNodeSelect) {
         networkRef.current.on('selectNode', (params) => {
           if (params.nodes.length > 0) {
@@ -90,9 +111,20 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
             // Find the node data to get the label
             const nodeData = nodesDataSetRef.current?.get(selectedNodeId);
             if (nodeData && 'label' in nodeData) {
-              onNodeSelect(nodeData.label as string);
+              const nodeLabel = nodeData.label as string;
+              setSelectedNodeLabel(nodeLabel);
+              onNodeSelect(nodeLabel);
             }
           }
+        });
+      }
+
+      // Add node deselection event listener
+      if (onNodeDeselect) {
+        networkRef.current.on('deselectNode', () => {
+          setSelectedNodeLabel(null);
+          setIsPreviewExpanded(false);
+          onNodeDeselect();
         });
       }
     };
@@ -105,7 +137,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         networkRef.current.destroy();
       }
     };
-  }, [currentGraphData, isFullscreen, onNodeSelect]); // Include isFullscreen and onNodeSelect in dependencies
+  }, [currentGraphData, isFullscreen, onNodeSelect, onNodeDeselect]); // Include isFullscreen and callback functions in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {
@@ -291,6 +323,48 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         <div className="text-sm font-medium text-gray-800">{truncatedSubject}</div>
         <div className="text-xs text-gray-500 mt-0.5">{metadata.model}</div>
       </div>
+
+      {/* Node Selection Preview Overlay */}
+      {selectedNodeLabel && (
+        <div 
+          className={`absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-gray-200 z-20 transition-all duration-300 ${
+            selectedNodeLabel ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+          } ${isPreviewExpanded ? 'max-w-2xl' : 'max-w-md'}`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-gray-500 mb-1">Generate from selection:</div>
+              <div 
+                className={`text-sm font-medium text-gray-800 cursor-default transition-all duration-200 ${
+                  isPreviewExpanded ? 'whitespace-normal' : 'truncate'
+                }`}
+                onMouseEnter={() => setIsPreviewExpanded(true)}
+                onMouseLeave={() => setIsPreviewExpanded(false)}
+                title={isPreviewExpanded ? '' : `${metadata.subject} → ${selectedNodeLabel}`}
+              >
+                {metadata.subject} → {selectedNodeLabel}
+              </div>
+            </div>
+            <button
+              onClick={handleGenerateFromNode}
+              disabled={isGeneratingFromNode}
+              className="flex-shrink-0 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-md hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              {isGeneratingFromNode ? (
+                <div className="flex items-center gap-1.5">
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Generating...</span>
+                </div>
+              ) : (
+                'Generate'
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Fullscreen toggle button */}
       <button
