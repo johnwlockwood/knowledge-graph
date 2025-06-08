@@ -5,12 +5,13 @@ import logging
 import time
 import collections.abc
 import httpx
-from typing import Literal, Dict, Tuple
+from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
+from cachetools import TTLCache
 from graph import agenerate_graph, stream_generate_graph, stream_generate_users
 
 
@@ -36,12 +37,12 @@ module_logger = logging.getLogger(__name__)  # __name__ = "app.main"
 
 results = {}  # In-memory storage (use Redis in production)
 
-# Rate limiting storage: {client_ip: (request_count, window_start_time)}
-rate_limit_storage: Dict[str, Tuple[int, float]] = {}
-
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))  # requests per window
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # window in seconds
+
+# Rate limiting storage using TTL cache - automatically expires entries
+rate_limit_storage = TTLCache(maxsize=10000, ttl=RATE_LIMIT_WINDOW)
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP address from request."""
@@ -54,44 +55,27 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 async def check_rate_limit(request: Request) -> None:
-    """Check if the request should be rate limited."""
+    """Check if the request should be rate limited using TTL cache."""
     client_ip = get_client_ip(request)
-    current_time = time.time()
     
-    # Clean up old entries (older than window)
-    expired_ips = [
-        ip for ip, (_, window_start) in rate_limit_storage.items()
-        if current_time - window_start > RATE_LIMIT_WINDOW
-    ]
-    for ip in expired_ips:
-        del rate_limit_storage[ip]
+    # Get current request count for this IP (defaults to 0 if not found or expired)
+    current_count = rate_limit_storage.get(client_ip, 0)
     
-    # Check current client
-    if client_ip in rate_limit_storage:
-        request_count, window_start = rate_limit_storage[client_ip]
-        
-        # If within the same window
-        if current_time - window_start <= RATE_LIMIT_WINDOW:
-            if request_count >= RATE_LIMIT_REQUESTS:
-                module_logger.warning(f"Rate limit exceeded for IP {client_ip}")
-                raise HTTPException(
-                    status_code=429,
-                    detail={
-                        "error": "Rate limit exceeded",
-                        "message": f"Too many requests. Limit: {RATE_LIMIT_REQUESTS} requests per {RATE_LIMIT_WINDOW} seconds",
-                        "retry_after": int(RATE_LIMIT_WINDOW - (current_time - window_start))
-                    },
-                    headers={"Retry-After": str(int(RATE_LIMIT_WINDOW - (current_time - window_start)))}
-                )
-            else:
-                # Increment counter
-                rate_limit_storage[client_ip] = (request_count + 1, window_start)
-        else:
-            # New window, reset counter
-            rate_limit_storage[client_ip] = (1, current_time)
-    else:
-        # First request from this IP
-        rate_limit_storage[client_ip] = (1, current_time)
+    # Check if rate limit exceeded
+    if current_count >= RATE_LIMIT_REQUESTS:
+        module_logger.warning(f"Rate limit exceeded for IP {client_ip}")
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "Rate limit exceeded",
+                "message": f"Too many requests. Limit: {RATE_LIMIT_REQUESTS} requests per {RATE_LIMIT_WINDOW} seconds",
+                "retry_after": RATE_LIMIT_WINDOW
+            },
+            headers={"Retry-After": str(RATE_LIMIT_WINDOW)}
+        )
+    
+    # Increment counter - TTL cache will automatically expire entries
+    rate_limit_storage[client_ip] = current_count + 1
     
     module_logger.debug(f"Rate limit check passed for IP {client_ip}: {rate_limit_storage.get(client_ip, (0, 0))[0]}/{RATE_LIMIT_REQUESTS}")
 
@@ -256,11 +240,11 @@ async def rate_limit_test(
 ):
     """Test endpoint to verify rate limiting is working."""
     client_ip = get_client_ip(http_request)
-    current_usage = rate_limit_storage.get(client_ip, (0, 0))
+    current_usage = rate_limit_storage.get(client_ip, 0)
     return {
         "message": "Rate limit test successful",
         "client_ip": client_ip,
-        "current_requests": current_usage[0],
+        "current_requests": current_usage,
         "limit": RATE_LIMIT_REQUESTS,
         "window_seconds": RATE_LIMIT_WINDOW
     }

@@ -15,6 +15,7 @@ dependencies = [
     "pydantic",
     "dotenv>=0.9.9",
     "httpx>=0.28.1",
+    "cachetools>=6.0.0",
 ]
 requires-python = ">=3.13"
 
