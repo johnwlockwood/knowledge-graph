@@ -13,7 +13,7 @@ interface StreamingGraphGeneratorProps {
 
 export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
-  const [selectedModel, setSelectedModel] = useState<AvailableModel>('gpt-4o-mini-2024-07-18');
+  const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
   
   // Track handled errors to prevent infinite re-renders
   const handledErrorRef = useRef<string | null>(null);
