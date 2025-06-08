@@ -72,9 +72,21 @@ export default function KnowledgeGraph() {
     onDelete: currentGraph && visibleGraphs.length > 0 ? () => handleDeleteRequest(currentGraph.id) : undefined
   });
 
-  // Get current graph data
+  // Get current graph data and metadata
   const currentGraphData = currentGraph?.data || INITIAL_DATA;
-  const currentModel = currentGraph?.model || 'gpt-3.5-turbo-16k';
+  const graphMetadata = currentGraph ? {
+    id: currentGraph.id,
+    title: currentGraph.title,
+    subject: currentGraph.subject,
+    createdAt: currentGraph.createdAt,
+    model: currentGraph.model
+  } : {
+    id: 'default',
+    title: 'Knowledge Graph',
+    subject: 'Empty Graph',
+    createdAt: Date.now(),
+    model: 'gpt-3.5-turbo'
+  };
 
   // Get delete confirmation graph title
   const deleteConfirmGraph = showDeleteConfirm ? allGraphs.find(g => g.id === showDeleteConfirm) : null;
@@ -162,7 +174,7 @@ export default function KnowledgeGraph() {
           {visibleGraphs.length > 0 && (
             <GraphVisualization 
               graphData={currentGraphData} 
-              model={currentModel}
+              metadata={graphMetadata}
               graphId={currentGraph?.id}
             />
           )}

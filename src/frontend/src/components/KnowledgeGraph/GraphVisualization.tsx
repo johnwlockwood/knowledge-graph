@@ -3,17 +3,25 @@ import { useEffect, useRef, useState } from 'react';
 import { DataSet } from 'vis-data';
 import { Network } from 'vis-network/standalone';
 import { ApiNode, ApiEdge, INITIAL_DATA } from '@/utils/constants';
-import { mapGraphData, getNetworkOptions, originalLabels, originalColors } from '@/utils/graphUtils';
+import { mapGraphData, getNetworkOptions, originalLabels, originalColors, truncateLabel } from '@/utils/graphUtils';
 import { FullscreenModal } from './UI/FullscreenModal';
+
+interface GraphMetadata {
+  id: string;
+  title: string;
+  subject: string;
+  createdAt: number;
+  model: string;
+}
 
 interface GraphVisualizationProps {
   graphData: { nodes: ApiNode[]; edges: ApiEdge[] };
-  model?: string;
+  metadata: GraphMetadata;
   isStreaming?: boolean;
   graphId?: string; // Optional graph ID to detect graph changes
 }
 
-export function GraphVisualization({ graphData, model, isStreaming = false, graphId }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -25,7 +33,7 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
   const currentGraphIdRef = useRef<string | undefined>(undefined);
 
   const currentGraphData = graphData || INITIAL_DATA;
-  const currentModel = model || 'gpt-3.5';
+  const truncatedSubject = truncateLabel(metadata.subject, 20);
 
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
@@ -261,14 +269,13 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
   // Render graph content
   const renderGraphContent = (isFullscreenMode: boolean = false) => (
     <div className="relative w-full h-full">
-      {/* Model badge */}
-      {currentModel && (
-        <div 
-          className={`absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg border border-gray-200 pointer-events-none z-10`}
-        >
-          <span className="text-xs font-medium text-gray-700">Model: {currentModel}</span>
-        </div>
-      )}
+      {/* Subject badge with model attribution */}
+      <div 
+        className={`absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-gray-200 pointer-events-none z-10 max-w-xs`}
+      >
+        <div className="text-sm font-medium text-gray-800">{truncatedSubject}</div>
+        <div className="text-xs text-gray-500 mt-0.5">{metadata.model}</div>
+      </div>
 
       {/* Fullscreen toggle button */}
       <button
