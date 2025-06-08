@@ -112,7 +112,7 @@ export function useGraphData() {
     
     const removedGraph = allGraphs.find(g => g.id === graphId);
     return removedGraph ? getGraphTitle(removedGraph) : 'Unknown Graph';
-  }, [allGraphs, visibleGraphs, currentGraphIndex]);
+  }, [allGraphs, visibleGraphs]);
 
   // Get current graph
   const currentGraph = visibleGraphs[currentGraphIndex];
