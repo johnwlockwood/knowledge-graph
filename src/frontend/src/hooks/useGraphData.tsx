@@ -25,9 +25,13 @@ export function useGraphData() {
     setAllGraphs(allGraphsData);
     setVisibleGraphs(visibleGraphsData);
     
-    // Set initial graph
+    // Set initial graph to the latest (most recent)
     if (visibleGraphsData.length > 0) {
-      setCurrentGraphIndex(0);
+      // Find the latest graph by createdAt timestamp
+      const latestGraphIndex = visibleGraphsData.reduce((latestIndex, graph, index) => {
+        return graph.createdAt > visibleGraphsData[latestIndex].createdAt ? index : latestIndex;
+      }, 0);
+      setCurrentGraphIndex(latestGraphIndex);
     }
   }, []);
 
