@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { StoredGraph, STORAGE_KEYS } from '@/utils/constants';
 import { useStreamingGraph } from '@/hooks/useStreamingGraph';
 import { ModelSelector, AvailableModel } from './UI/ModelSelector';
@@ -17,6 +17,7 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileWidgetRef = useRef<{ resetWidget?: () => void }>(null);
   
   // Track handled errors to prevent infinite re-renders
   const handledErrorRef = useRef<string | null>(null);
@@ -40,6 +41,8 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
     startStreaming,
     cancelStreaming,
     resetState,
+    setTurnstileRemountCallback,
+    retryPendingRequest,
   } = useStreamingGraph();
 
   const resetStateRef = useRef(resetState);
@@ -57,6 +60,15 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
       onResetState(resetState);
     }
   }, [onResetState, resetState]);
+
+  // Set up Turnstile reset callback
+  useEffect(() => {
+    setTurnstileRemountCallback(() => {
+      if (turnstileWidgetRef.current?.resetWidget) {
+        turnstileWidgetRef.current.resetWidget();
+      }
+    });
+  }, [setTurnstileRemountCallback]);
 
   // Handle streaming errors - prevent infinite re-renders
   useEffect(() => {
@@ -79,6 +91,13 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
     }
   }, [error, isStreaming]);
 
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    
+    // Check if there's a pending request to retry
+    retryPendingRequest(token);
+  }, [retryPendingRequest]);
 
   const handleGenerate = async () => {
     if (!subject.trim()) return;
@@ -164,8 +183,9 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
 
         {/* Turnstile Security Verification */}
           <TurnstileWidget
+            ref={turnstileWidgetRef}
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
-            onVerify={setTurnstileToken}
+            onVerify={handleTurnstileVerify}
             onError={() => {
               setTurnstileToken(null);
               onToast('Security verification failed. Please try again.', 'error');
