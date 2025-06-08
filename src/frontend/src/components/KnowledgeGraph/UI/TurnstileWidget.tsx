@@ -51,7 +51,8 @@ export const TurnstileWidget = forwardRef<{ resetWidget?: () => void }, Turnstil
           onError={handleError}
           options={{
             theme: 'light',
-            size: 'normal'
+            size: 'normal',
+            execution: 'render' // Load resources only when actually rendering
           }}
         />
       </div>

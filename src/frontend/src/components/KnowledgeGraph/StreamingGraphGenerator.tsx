@@ -123,6 +123,11 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
         onToast(`Generated "${graph.title}" knowledge graph with ${graph.data.nodes.length} nodes and ${graph.data.edges.length} connections`, 'success');
         setSubject(''); // Clear input on success
         setTurnstileToken(null); // Reset Turnstile token
+        
+        // Reset Turnstile widget to get a new token
+        if (turnstileWidgetRef.current?.resetWidget) {
+          turnstileWidgetRef.current.resetWidget();
+        }
       }, turnstileToken);
     } catch (err) {
       onToast('Failed to start streaming. Please try again.', 'error');
