@@ -19,7 +19,6 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const nodesDataSetRef = useRef<DataSet<object> | null>(null);
   const edgesDataSetRef = useRef<DataSet<object> | null>(null);
-  const [hoveredLabel, setHoveredLabel] = useState<{text: string, x: number, y: number} | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const lastNodeCountRef = useRef<number>(0);
   const lastEdgeCountRef = useRef<number>(0);
@@ -292,30 +291,6 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
         ref={isFullscreenMode ? fullscreenContainerRef : containerRef} 
         className={`w-full ${isFullscreenMode ? 'h-full' : 'h-[600px]'} ${isFullscreenMode ? '' : 'border-2 border-dashed border-gray-300 rounded-xl'} relative`}
       >
-        {/* Floating label overlay */}
-        {hoveredLabel && (
-          <div
-            className="absolute z-50 pointer-events-none"
-            style={{
-              left: hoveredLabel.x,
-              top: hoveredLabel.y,
-              transform: 'translate(-50%, -100%)'
-            }}
-          >
-            <div className="bg-white border-4 border-indigo-500 rounded-lg px-4 py-2 shadow-lg max-w-xs">
-              <div className="text-sm font-semibold text-gray-900 text-center">
-                {hoveredLabel.text}
-              </div>
-              {/* Arrow pointing down */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2">
-                <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-indigo-500"></div>
-                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
-                  <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
