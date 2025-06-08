@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { StoredGraph } from '@/utils/constants';
+import { StoredGraph, STORAGE_KEYS } from '@/utils/constants';
 import { useStreamingGraph } from '@/hooks/useStreamingGraph';
 import { ModelSelector, AvailableModel } from './UI/ModelSelector';
 import { StreamingProgress } from './UI/StreamingProgress';
+import { loadFromLocalStorage, saveToLocalStorage } from '@/hooks/useLocalStorage';
 
 interface StreamingGraphGeneratorProps {
   onGraphGenerated: (graph: StoredGraph) => void;
@@ -17,6 +18,17 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
   
   // Track handled errors to prevent infinite re-renders
   const handledErrorRef = useRef<string | null>(null);
+  
+  // Load saved model on component mount
+  useEffect(() => {
+    const savedModel = loadFromLocalStorage<AvailableModel>(STORAGE_KEYS.SELECTED_MODEL, 'o4-mini-2025-04-16');
+    setSelectedModel(savedModel);
+  }, []);
+  
+  // Save model selection to localStorage whenever it changes
+  useEffect(() => {
+    saveToLocalStorage(STORAGE_KEYS.SELECTED_MODEL, selectedModel);
+  }, [selectedModel]);
   
   const {
     isStreaming,
