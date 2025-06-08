@@ -75,7 +75,7 @@ async def check_rate_limit(request: Request) -> None:
     # Increment counter - TTL cache will automatically expire entries
     rate_limit_storage[client_ip] = current_count + 1
     
-    module_logger.debug(f"Rate limit check passed for IP {client_ip}: {rate_limit_storage.get(client_ip, (0, 0))[0]}/{RATE_LIMIT_REQUESTS}")
+    module_logger.debug(f"Rate limit check passed for IP {client_ip}: {rate_limit_storage.get(client_ip, 0)}/{RATE_LIMIT_REQUESTS}")
 
 app = FastAPI()
 
