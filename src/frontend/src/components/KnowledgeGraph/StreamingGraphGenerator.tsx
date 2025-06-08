@@ -126,17 +126,22 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
           </button>
         </div>
 
-        {/* Model Selection */}
-        <div className="w-full max-w-md">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            AI Model
-          </label>
-          <ModelSelector
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            disabled={isStreaming}
-          />
-        </div>
+        {/* Model Selection - Minimized */}
+        <details className="w-full max-w-md">
+          <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-2">
+            <span>Model: {selectedModel}</span>
+            <svg className="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <div className="mt-2">
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              disabled={isStreaming}
+            />
+          </div>
+        </details>
       </div>
 
       {/* Streaming Progress */}

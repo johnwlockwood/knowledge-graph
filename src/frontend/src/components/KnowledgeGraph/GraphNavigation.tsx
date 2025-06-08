@@ -23,96 +23,93 @@ export function GraphNavigation({
 
   return (
     <>
-      {/* Navigation Controls */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">Knowledge Graph</h2>
+      {/* Compact Navigation Header */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold text-gray-800">Knowledge Graph</h2>
         
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onPrevious}
-              disabled={currentGraphIndex === 0}
-              className="p-2 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Previous graph (←)"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            
-            <span className="text-sm text-gray-600 font-medium">
-              {currentGraphIndex + 1} of {visibleGraphs.length}
-            </span>
-            
-            <button
-              onClick={onNext}
-              disabled={currentGraphIndex === visibleGraphs.length - 1}
-              className="p-2 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Next graph (→)"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+        {/* Compact Navigation Controls */}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onPrevious}
+            disabled={currentGraphIndex === 0}
+            className="p-1.5 rounded-md bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Previous graph (←)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <span className="text-xs text-gray-600 font-medium px-2">
+            {currentGraphIndex + 1}/{visibleGraphs.length}
+          </span>
+          
+          <button
+            onClick={onNext}
+            disabled={currentGraphIndex === visibleGraphs.length - 1}
+            className="p-1.5 rounded-md bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Next graph (→)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* Graph History Timeline */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-        <div className="relative">
-          {/* Scroll container with improved spacing and behavior */}
-          <div 
-            className="flex items-center gap-3 overflow-x-auto pb-2 scroll-smooth"
-            style={{
-              scrollSnapType: 'x mandatory',
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#cbd5e1 #f1f5f9'
-            }}
-          >
-            {visibleGraphs.map((graph, index) => (
-              <div 
-                key={graph.id} 
-                className="flex items-center gap-2 flex-shrink-0"
-                style={{ scrollSnapAlign: 'start' }}
-              >
-                <button
-                  onClick={() => onGoToIndex(index)}
-                  className={`min-w-[120px] max-w-[200px] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 truncate ${
-                    index === currentGraphIndex
-                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                  }`}
-                  title={`Go to ${getGraphTitle(graph)}`}
+      {/* Collapsible Graph Timeline */}
+      <details className="mb-3 group">
+        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1">
+          <span>Show graphs ({visibleGraphs.length})</span>
+          <svg className="w-3 h-3 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </summary>
+        <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+          <div className="relative">
+            <div 
+              className="flex items-center gap-2 overflow-x-auto pb-1 scroll-smooth"
+              style={{
+                scrollSnapType: 'x mandatory',
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cbd5e1 #f1f5f9'
+              }}
+            >
+              {visibleGraphs.map((graph, index) => (
+                <div 
+                  key={graph.id} 
+                  className="flex items-center gap-1 flex-shrink-0"
+                  style={{ scrollSnapAlign: 'start' }}
                 >
-                  {getGraphTitle(graph)}
-                </button>
-                <button
-                  onClick={() => onRequestDelete(graph.id)}
-                  className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group"
-                  title="Remove graph"
-                >
-                  <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+                  <button
+                    onClick={() => onGoToIndex(index)}
+                    className={`min-w-[100px] max-w-[160px] px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 truncate ${
+                      index === currentGraphIndex
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300'
+                    }`}
+                    title={`Go to ${getGraphTitle(graph)}`}
+                  >
+                    {getGraphTitle(graph)}
+                  </button>
+                  <button
+                    onClick={() => onRequestDelete(graph.id)}
+                    className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                    title="Remove graph"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          {/* Scroll indicators - left fade */}
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10"></div>
-          
-          {/* Scroll indicators - right fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div>
+          <div className="mt-2 text-xs text-gray-500">
+            Use ← → keys to navigate • Delete key removes current graph
+          </div>
         </div>
-        <div className="mt-3 text-xs text-gray-500 flex items-center justify-between">
-          <span>Use ← → arrow keys to navigate • Delete key to remove current graph • Click × to remove specific graphs</span>
-          {visibleGraphs.length > 3 && (
-            <span className="text-indigo-600 font-medium">← Scroll to see more →</span>
-          )}
-        </div>
-      </div>
+      </details>
     </>
   );
 }
