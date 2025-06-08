@@ -124,5 +124,6 @@ export const EXAMPLE_GRAPHS: StoredGraph[] = [
 // Local storage keys
 export const STORAGE_KEYS = {
   GRAPHS: 'knowledge-graphs',
-  PREFERENCES: 'user-preferences'
+  PREFERENCES: 'user-preferences',
+  SELECTED_MODEL: 'selected-model'
 } as const;
