@@ -6,10 +6,11 @@ import time
 import collections.abc
 from typing import Literal
 from dotenv import load_dotenv
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
+from cachetools import TTLCache
 from graph import agenerate_graph, stream_generate_graph, stream_generate_users
 
 
@@ -34,7 +35,52 @@ module_logger = logging.getLogger(__name__)  # __name__ = "app.main"
 
 results = {}  # In-memory storage (use Redis in production)
 
+# Rate limiting configuration
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))  # requests per window
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # window in seconds
+
+# Rate limiting storage using TTL cache - automatically expires entries
+rate_limit_storage = TTLCache(maxsize=10000, ttl=RATE_LIMIT_WINDOW)
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP address from request."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+    return request.client.host if request.client else "unknown"
+
+async def check_rate_limit(request: Request) -> None:
+    """Check if the request should be rate limited using TTL cache."""
+    client_ip = get_client_ip(request)
+    
+    # Get current request count for this IP (defaults to 0 if not found or expired)
+    current_count = rate_limit_storage.get(client_ip, 0)
+    
+    # Check if rate limit exceeded
+    if current_count >= RATE_LIMIT_REQUESTS:
+        module_logger.warning(f"Rate limit exceeded for IP {client_ip}")
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "Rate limit exceeded",
+                "message": f"Too many requests. Limit: {RATE_LIMIT_REQUESTS} requests per {RATE_LIMIT_WINDOW} seconds",
+                "retry_after": RATE_LIMIT_WINDOW
+            },
+            headers={"Retry-After": str(RATE_LIMIT_WINDOW)}
+        )
+    
+    # Increment counter - TTL cache will automatically expire entries
+    rate_limit_storage[client_ip] = current_count + 1
+    
+    module_logger.debug(f"Rate limit check passed for IP {client_ip}: {rate_limit_storage.get(client_ip, (0, 0))[0]}/{RATE_LIMIT_REQUESTS}")
+
 app = FastAPI()
+
+# Log rate limiting configuration
+module_logger.info(f"Rate limiting configured: {RATE_LIMIT_REQUESTS} requests per {RATE_LIMIT_WINDOW} seconds")
 
 # Add CORS middleware
 app.add_middleware(
@@ -91,7 +137,11 @@ async def process_openai(request: SubjectRequest, task_id: str):
 
 
 @app.post("/api/generate-graph")
-async def generate_knowledge_graph(request: SubjectRequest):
+async def generate_knowledge_graph(
+    request: SubjectRequest,
+    http_request: Request,
+    _: None = Depends(check_rate_limit)
+):
     response = await agenerate_graph(request.subject)
     return response
 
@@ -151,9 +201,29 @@ class StreamingGraphRequest(BaseModel):
 async def home():
     return {"data": "hello world"}
 
+@app.get("/api/rate-limit-test")
+async def rate_limit_test(
+    http_request: Request,
+    _: None = Depends(check_rate_limit)
+):
+    """Test endpoint to verify rate limiting is working."""
+    client_ip = get_client_ip(http_request)
+    current_usage = rate_limit_storage.get(client_ip, 0)
+    return {
+        "message": "Rate limit test successful",
+        "client_ip": client_ip,
+        "current_requests": current_usage,
+        "limit": RATE_LIMIT_REQUESTS,
+        "window_seconds": RATE_LIMIT_WINDOW
+    }
+
 
 @app.post("/api/stream-generate-graph")
-async def stream_generate_knowledge_graph(request: StreamingGraphRequest):
+async def stream_generate_knowledge_graph(
+    request: StreamingGraphRequest,
+    http_request: Request,
+    _: None = Depends(check_rate_limit)
+):
     """
     Stream knowledge graph entities based on the subject using
     the specified model.
@@ -178,7 +248,12 @@ async def generate_users_stream_response(
 
 
 @app.post("/api/stream-users")
-async def stream_users(request: UsersRequest, model_request: ModelRequest):
+async def stream_users(
+    request: UsersRequest,
+    model_request: ModelRequest,
+    http_request: Request,
+    _: None = Depends(check_rate_limit)
+):
     return StreamingResponse(
         generate_users_stream_response(
             request.domain, request.number_of_users, model_request.model
@@ -190,7 +265,10 @@ async def stream_users(request: UsersRequest, model_request: ModelRequest):
 
 @app.post("/api/start-generate-graph")
 async def start_generate_graph(
-    request: SubjectRequest, background_tasks: BackgroundTasks
+    request: SubjectRequest,
+    background_tasks: BackgroundTasks,
+    http_request: Request,
+    _: None = Depends(check_rate_limit)
 ):
     task_id = str(uuid4())
     background_tasks.add_task(process_openai, request, task_id)
