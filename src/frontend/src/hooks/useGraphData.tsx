@@ -108,8 +108,7 @@ export function useGraphData() {
     setVisibleGraphs(newVisibleGraphs);
     
     // Adjust current index if necessary
-    const newIndex = currentGraphIndex >= newVisibleGraphs.length ? Math.max(0, newVisibleGraphs.length - 1) : currentGraphIndex;
-    setCurrentGraphIndex(newIndex);
+    setCurrentGraphIndex(prev => prev >= newVisibleGraphs.length ? Math.max(0, newVisibleGraphs.length - 1) : prev);
     
     const removedGraph = allGraphs.find(g => g.id === graphId);
     return removedGraph ? getGraphTitle(removedGraph) : 'Unknown Graph';
