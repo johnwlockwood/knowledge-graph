@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef } from 'react';
 import { StoredGraph } from '../../utils/constants';
 import { getGraphTitle } from '../../utils/graphUtils';
 
@@ -19,6 +20,29 @@ export function GraphNavigation({
   onGoToIndex, 
   onRequestDelete 
 }: GraphNavigationProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-scroll to active graph button when currentGraphIndex changes
+  useEffect(() => {
+    if (activeButtonRef.current && scrollContainerRef.current) {
+      const button = activeButtonRef.current;
+      const container = scrollContainerRef.current;
+      
+      // Calculate scroll position to center the active button
+      const buttonLeft = button.offsetLeft;
+      const buttonWidth = button.offsetWidth;
+      const containerWidth = container.offsetWidth;
+      
+      const scrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
+      
+      container.scrollTo({
+        left: Math.max(0, scrollLeft),
+        behavior: 'smooth'
+      });
+    }
+  }, [currentGraphIndex]);
+
   if (visibleGraphs.length <= 1) return null;
 
   return (
@@ -68,6 +92,7 @@ export function GraphNavigation({
         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
           <div className="relative">
             <div 
+              ref={scrollContainerRef}
               className="flex items-center gap-2 overflow-x-auto pb-1 scroll-smooth"
               style={{
                 scrollSnapType: 'x mandatory',
@@ -82,6 +107,7 @@ export function GraphNavigation({
                   style={{ scrollSnapAlign: 'start' }}
                 >
                   <button
+                    ref={index === currentGraphIndex ? activeButtonRef : null}
                     onClick={() => onGoToIndex(index)}
                     className={`min-w-[100px] max-w-[160px] px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 truncate ${
                       index === currentGraphIndex
