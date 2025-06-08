@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { StoredGraph, UserPreferences, EXAMPLE_GRAPHS, STORAGE_KEYS } from '../utils/constants';
-import { getGraphTitle } from '../utils/graphUtils';
+import { StoredGraph, UserPreferences, EXAMPLE_GRAPHS, STORAGE_KEYS, ApiNode } from '../utils/constants';
+import { getGraphTitle, linkChildToParent } from '../utils/graphUtils';
 import { loadFromLocalStorage, saveToLocalStorage } from './useLocalStorage';
 
 export function useGraphData() {
@@ -114,6 +114,85 @@ export function useGraphData() {
     return removedGraph ? getGraphTitle(removedGraph) : 'Unknown Graph';
   }, [allGraphs, visibleGraphs]);
 
+  // === New Navigation Functions ===
+
+  // Link graphs with parent-child relationship
+  const linkGraphs = useCallback((
+    parentGraphId: string, 
+    parentNodeId: number,
+    childGraphId: string, 
+    sourceNodeLabel: string
+  ) => {
+    setAllGraphs(prevGraphs => {
+      const parentGraph = prevGraphs.find(g => g.id === parentGraphId);
+      const childGraph = prevGraphs.find(g => g.id === childGraphId);
+      
+      if (!parentGraph || !childGraph) return prevGraphs;
+      
+      const { updatedParent, updatedChild } = linkChildToParent(
+        parentGraph, 
+        childGraph, 
+        parentNodeId, 
+        sourceNodeLabel
+      );
+      
+      return prevGraphs.map(g => 
+        g.id === parentGraphId ? updatedParent :
+        g.id === childGraphId ? updatedChild : g
+      );
+    });
+
+    // Also update visibleGraphs
+    setVisibleGraphs(prevVisibleGraphs => {
+      const parentGraph = prevVisibleGraphs.find(g => g.id === parentGraphId);
+      const childGraph = prevVisibleGraphs.find(g => g.id === childGraphId);
+      
+      if (!parentGraph || !childGraph) return prevVisibleGraphs;
+      
+      const { updatedParent, updatedChild } = linkChildToParent(
+        parentGraph, 
+        childGraph, 
+        parentNodeId, 
+        sourceNodeLabel
+      );
+      
+      return prevVisibleGraphs.map(g => 
+        g.id === parentGraphId ? updatedParent :
+        g.id === childGraphId ? updatedChild : g
+      );
+    });
+  }, []);
+
+  // Navigate to child graph from a specific node
+  const navigateToChildGraph = useCallback((nodeId: number) => {
+    const currentGraph = visibleGraphs[currentGraphIndex];
+    const currentNode = currentGraph?.data.nodes.find(n => n.id === nodeId);
+    if (currentNode?.childGraphId) {
+      const childGraphIndex = visibleGraphs.findIndex(g => g.id === currentNode.childGraphId);
+      if (childGraphIndex !== -1) {
+        setCurrentGraphIndex(childGraphIndex);
+      }
+    }
+  }, [currentGraphIndex, visibleGraphs]);
+
+  // Navigate to parent graph from root node
+  const navigateToParentGraph = useCallback((rootNode: ApiNode) => {
+    if (rootNode.parentGraphId) {
+      const parentGraphIndex = visibleGraphs.findIndex(g => g.id === rootNode.parentGraphId);
+      if (parentGraphIndex !== -1) {
+        setCurrentGraphIndex(parentGraphIndex);
+      }
+    }
+  }, [visibleGraphs]);
+
+  // Navigate to graph by ID
+  const goToGraphById = useCallback((graphId: string) => {
+    const graphIndex = visibleGraphs.findIndex(g => g.id === graphId);
+    if (graphIndex !== -1) {
+      setCurrentGraphIndex(graphIndex);
+    }
+  }, [visibleGraphs]);
+
   // Get current graph
   const currentGraph = visibleGraphs[currentGraphIndex];
 
@@ -127,6 +206,11 @@ export function useGraphData() {
     goToGraphAtIndex,
     addGraph,
     importGraphs,
-    removeGraph
+    removeGraph,
+    // New navigation functions
+    linkGraphs,
+    navigateToChildGraph,
+    navigateToParentGraph,
+    goToGraphById
   };
 }

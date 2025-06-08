@@ -4,6 +4,7 @@ import { StoredGraph } from '../../../utils/constants';
 import { 
   exportSingleGraph, 
   exportMultipleGraphs, 
+  exportConnectedGraphs,
   downloadJSON, 
   generateExportFilename,
   parseImportedData,
@@ -11,6 +12,7 @@ import {
   ExportFormat,
   ValidationResult
 } from '../../../utils/shareUtils';
+import { getConnectedGraphs } from '../../../utils/graphUtils';
 import { useModal } from '../../../hooks/useModal';
 import { ModalCloseButton } from './ModalCloseButton';
 
@@ -35,7 +37,7 @@ export function ShareModal({
 }: ShareModalProps) {
   const [mode, setMode] = useState<ModalMode>('main');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('standard');
-  const [exportMultiple, setExportMultiple] = useState(false);
+  const [exportScope, setExportScope] = useState<'single' | 'connected' | 'all'>('single');
   const [importData, setImportData] = useState('');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,14 +64,21 @@ export function ShareModal({
       let jsonData: string;
       let filename: string;
 
-      if (exportMultiple) {
+      if (exportScope === 'all') {
         jsonData = exportMultipleGraphs(allGraphs, { 
           format: exportFormat, 
           includeMetadata: true, 
           prettyPrint: true 
         });
         filename = generateExportFilename(null, exportFormat, true);
-      } else if (currentGraph) {
+      } else if (exportScope === 'connected' && currentGraph) {
+        jsonData = exportConnectedGraphs(currentGraph, allGraphs, { 
+          format: exportFormat, 
+          includeMetadata: true, 
+          prettyPrint: true 
+        });
+        filename = generateExportFilename(currentGraph, exportFormat, false, true);
+      } else if (exportScope === 'single' && currentGraph) {
         jsonData = exportSingleGraph(currentGraph, { 
           format: exportFormat, 
           includeMetadata: true, 
@@ -189,8 +198,8 @@ export function ShareModal({
             <label className="flex items-center">
               <input
                 type="radio"
-                checked={!exportMultiple}
-                onChange={() => setExportMultiple(false)}
+                checked={exportScope === 'single'}
+                onChange={() => setExportScope('single')}
                 className="mr-2"
                 disabled={!currentGraph}
               />
@@ -201,8 +210,23 @@ export function ShareModal({
             <label className="flex items-center">
               <input
                 type="radio"
-                checked={exportMultiple}
-                onChange={() => setExportMultiple(true)}
+                checked={exportScope === 'connected'}
+                onChange={() => setExportScope('connected')}
+                className="mr-2"
+                disabled={!currentGraph}
+              />
+              <span className={!currentGraph ? 'text-gray-400' : ''}>
+                Connected graph network {currentGraph ? (() => {
+                  const connectedCount = getConnectedGraphs(currentGraph, allGraphs).length;
+                  return `(${connectedCount} graph${connectedCount > 1 ? 's' : ''})`;
+                })() : '(none selected)'}
+              </span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                checked={exportScope === 'all'}
+                onChange={() => setExportScope('all')}
                 className="mr-2"
               />
               <span>All graphs ({allGraphs.length} total)</span>
@@ -233,7 +257,7 @@ export function ShareModal({
           </button>
           <button
             onClick={handleExport}
-            disabled={!exportMultiple && !currentGraph}
+            disabled={(exportScope === 'single' || exportScope === 'connected') && !currentGraph}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Download JSON

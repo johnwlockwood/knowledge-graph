@@ -1,6 +1,6 @@
 "use client";
 import { StoredGraph } from './constants';
-import { generateGraphId } from './graphUtils';
+import { generateGraphId, getConnectedGraphs, extractRelationships } from './graphUtils';
 
 // Export formats
 export type ExportFormat = 'standard' | 'minimal' | 'shareable';
@@ -74,6 +74,71 @@ export function exportSingleGraph(
     : JSON.stringify(exportData);
 }
 
+// Export connected graphs (hierarchical structure)
+export function exportConnectedGraphs(
+  rootGraph: StoredGraph,
+  allGraphs: StoredGraph[],
+  options: ExportOptions = { format: 'standard', includeMetadata: true, prettyPrint: true }
+): string {
+  const connectedGraphs = getConnectedGraphs(rootGraph, allGraphs);
+  const relationships = extractRelationships(connectedGraphs);
+  
+  let exportData: Record<string, unknown>;
+
+  switch (options.format) {
+    case 'minimal':
+      exportData = {
+        connectedGraphs: connectedGraphs.map(graph => ({
+          id: graph.id,
+          nodes: graph.data.nodes,
+          edges: graph.data.edges,
+          title: graph.title,
+          parentGraphId: graph.parentGraphId,
+          parentNodeId: graph.parentNodeId,
+          sourceNodeLabel: graph.sourceNodeLabel
+        })),
+        relationships: relationships
+      };
+      break;
+    
+    case 'shareable':
+      exportData = {
+        sharedKnowledge: {
+          title: `Connected Knowledge Network: ${rootGraph.title}`,
+          description: `Hierarchical knowledge graph network starting from "${rootGraph.title}" with ${connectedGraphs.length} connected graphs`,
+          exportedAt: new Date().toISOString(),
+          exportedBy: "Knowledge Graph Generator",
+          version: "1.0",
+          type: "connected",
+          rootGraphId: rootGraph.id,
+          graphs: connectedGraphs,
+          relationships: relationships
+        }
+      };
+      break;
+    
+    case 'standard':
+    default:
+      exportData = {
+        knowledgeGraph: {
+          exportedAt: new Date().toISOString(),
+          exportedBy: "Knowledge Graph Generator",
+          version: "1.0",
+          type: "connected",
+          rootGraphId: rootGraph.id,
+          count: connectedGraphs.length,
+          graphs: connectedGraphs,
+          relationships: relationships
+        }
+      };
+      break;
+  }
+
+  return options.prettyPrint 
+    ? JSON.stringify(exportData, null, 2)
+    : JSON.stringify(exportData);
+}
+
 // Export multiple graphs
 export function exportMultipleGraphs(
   graphs: StoredGraph[], 
@@ -129,10 +194,20 @@ export function exportMultipleGraphs(
 export function generateExportFilename(
   graph: StoredGraph | null, 
   format: ExportFormat,
-  isMultiple: boolean = false
+  isMultiple: boolean = false,
+  isConnected: boolean = false
 ): string {
   const timestamp = new Date().toISOString().split('T')[0];
   const formatSuffix = format === 'minimal' ? '-minimal' : '';
+  
+  if (isConnected && graph) {
+    const safeName = graph.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `connected-${safeName}-${timestamp}${formatSuffix}.json`;
+  }
   
   if (isMultiple) {
     return `knowledge-graphs-${timestamp}${formatSuffix}.json`;

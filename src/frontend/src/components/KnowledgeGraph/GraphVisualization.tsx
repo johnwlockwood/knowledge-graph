@@ -21,10 +21,12 @@ interface GraphVisualizationProps {
   graphId?: string; // Optional graph ID to detect graph changes
   onNodeSelect?: (nodeLabel: string) => void; // Callback for node selection
   onNodeDeselect?: () => void; // Callback for node deselection
-  onGenerateFromNode?: (subject: string) => Promise<void>; // Callback to generate from selected node
+  onGenerateFromNode?: (subject: string, sourceNodeId?: number, sourceNodeLabel?: string) => Promise<void>; // Callback to generate from selected node
+  onNavigateToChild?: (nodeId: number) => void; // Callback to navigate to child graph
+  onNavigateToParent?: (rootNode: ApiNode) => void; // Callback to navigate to parent graph
 }
 
-export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -54,11 +56,15 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const handleGenerateFromNode = async () => {
     if (!selectedNodeLabel || !onGenerateFromNode) return;
     
+    // Find the selected node ID
+    const selectedNode = currentGraphData.nodes.find(n => n.label === selectedNodeLabel);
+    if (!selectedNode) return;
+    
     const generationSubject = `${metadata.subject} -> ${selectedNodeLabel}`;
     setIsGeneratingFromNode(true);
     
     try {
-      await onGenerateFromNode(generationSubject);
+      await onGenerateFromNode(generationSubject, selectedNode.id, selectedNodeLabel);
     } finally {
       setIsGeneratingFromNode(false);
       setSelectedNodeLabel(null);
@@ -136,12 +142,22 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         networkRef.current.on('selectNode', (params) => {
           if (params.nodes.length > 0) {
             const selectedNodeId = params.nodes[0];
-            // Find the node data to get the label
+            // Find the original node data to check if it's a root node
+            const originalNode = currentGraphData.nodes.find(n => n.id === selectedNodeId);
             const nodeData = nodesDataSetRef.current?.get(selectedNodeId);
-            if (nodeData && 'label' in nodeData) {
+            
+            if (nodeData && 'label' in nodeData && originalNode) {
               const nodeLabel = nodeData.label as string;
-              setSelectedNodeLabel(nodeLabel);
-              onNodeSelect(nodeLabel);
+              
+              // Don't show generate preview for root nodes (they're for navigation back to parent)
+              if (!originalNode.isRootNode) {
+                setSelectedNodeLabel(nodeLabel);
+                onNodeSelect(nodeLabel);
+              } else {
+                // For root nodes, clear any existing selection but don't trigger generation preview
+                setSelectedNodeLabel(null);
+                setIsPreviewExpanded(false);
+              }
             }
           }
         });
@@ -155,6 +171,30 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
           onNodeDeselect();
         });
       }
+
+      // Add double-click navigation handler
+      networkRef.current.on('doubleClick', (params) => {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          // Find the node data to determine navigation action
+          const nodeData = nodesDataSetRef.current?.get(nodeId);
+          const originalNode = currentGraphData.nodes.find(n => n.id === nodeId);
+          
+          if (nodeData && originalNode) {
+            if (originalNode.hasChildGraph && onNavigateToChild) {
+              // Clear preview state before navigating to child graph
+              setSelectedNodeLabel(null);
+              setIsPreviewExpanded(false);
+              onNavigateToChild(nodeId);
+            } else if (originalNode.isRootNode && onNavigateToParent) {
+              // Clear preview state before navigating to parent graph
+              setSelectedNodeLabel(null);
+              setIsPreviewExpanded(false);
+              onNavigateToParent(originalNode);
+            }
+          }
+        }
+      });
     };
 
     initializeNetwork();
@@ -165,7 +205,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         networkRef.current.destroy();
       }
     };
-  }, [currentGraphData, isFullscreen, onNodeSelect, onNodeDeselect]); // Include isFullscreen and callback functions in dependencies
+  }, [currentGraphData, isFullscreen, onNodeSelect, onNodeDeselect, onNavigateToChild, onNavigateToParent]); // Include isFullscreen and all callback functions in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {
@@ -180,6 +220,10 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
     if (isNewGraph) {
       // Completely rebuild the graph data for a new graph
       currentGraphIdRef.current = graphId;
+      
+      // Clear selection state when navigating to different graph
+      setSelectedNodeLabel(null);
+      setIsPreviewExpanded(false);
       
       // Clear existing data
       nodesDataSetRef.current.clear();
@@ -399,6 +443,27 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
           </div>
         </div>
       )}
+
+      {/* Navigation Legend */}
+      <div className={`absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200 z-10 ${isFullscreenMode ? 'text-sm' : 'text-xs'}`}>
+        <div className="text-gray-600 mb-2 font-medium">Navigation:</div>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded border-2 border-indigo-500 bg-gray-200" style={{boxShadow: '0 0 6px rgba(79, 70, 229, 0.5)'}}></div>
+            <span className="text-gray-700">Has sub-graph (double-click)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-4 h-4 rounded bg-gray-200"
+              style={{
+                border: '2px dashed #059669',
+                boxShadow: '0 0 6px rgba(5, 150, 105, 0.5)'
+              }}
+            ></div>
+            <span className="text-gray-700">Root node (double-click for parent)</span>
+          </div>
+        </div>
+      </div>
 
       {/* Fullscreen toggle button */}
       <button

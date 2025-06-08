@@ -116,22 +116,56 @@ export function mapGraphData(
   edgesDataSetRef.current = edgesDataSet;
 
   return {
-    nodes: new DataSet(data.nodes.map(node => ({
-      id: node.id,
-      label: node.label,
-      shape: "box",
-      color: {
-        background: node.color,
-        border: node.color,
-        highlight: {
-          background: node.color,
-          border: node.color
-        }
-      },
-      font: {
-        color: getContrastColor(node.color)
+    nodes: new DataSet(data.nodes.map(node => {
+      // Determine border styling based on node type
+      let borderColor = node.color;
+      let borderWidth = 2;
+      let borderDashes: number[] | undefined = undefined;
+      let shadowColor = 'rgba(0,0,0,0.3)';
+      let shadowSize = 5;
+      
+      if (node.hasChildGraph) {
+        // Blue outline for nodes with child graphs
+        borderColor = '#4F46E5';
+        borderWidth = 4;
+        shadowColor = '#4F46E5';
+        shadowSize = 8;
+      } else if (node.isRootNode) {
+        // Green dashed outline for root nodes
+        borderColor = '#059669';
+        borderWidth = 4;
+        borderDashes = [5, 5];
+        shadowColor = '#059669';
+        shadowSize = 8;
       }
-    }))),
+      
+      return {
+        id: node.id,
+        label: node.label,
+        shape: "box",
+        color: {
+          background: node.color,
+          border: borderColor,
+          highlight: {
+            background: node.color,
+            border: borderColor
+          }
+        },
+        borderWidth: borderWidth,
+        borderDashes: borderDashes,
+        shadow: {
+          enabled: true,
+          color: shadowColor,
+          size: shadowSize,
+          x: 0,
+          y: 0
+        },
+        font: {
+          color: getContrastColor(node.color),
+          size: (node.hasChildGraph || node.isRootNode) ? 18 : 16 // Slightly larger for connected nodes
+        }
+      };
+    })),
     edges: edgesDataSet
   };
 }
@@ -183,3 +217,171 @@ export const getNetworkOptions = () => ({
     hierarchical: false,
   },
 });
+
+// === Graph Relationship Utility Functions ===
+
+/**
+ * Links a child graph to its parent graph with specific node relationship
+ */
+export function linkChildToParent(
+  parentGraph: StoredGraph, 
+  childGraph: StoredGraph, 
+  parentNodeId: number,
+  sourceNodeLabel: string
+): { updatedParent: StoredGraph; updatedChild: StoredGraph } {
+  // Update parent node to reference child
+  const updatedParentNodes = parentGraph.data.nodes.map(node => 
+    node.id === parentNodeId 
+      ? { ...node, hasChildGraph: true, childGraphId: childGraph.id }
+      : node
+  );
+  
+  // Update parent graph
+  const updatedParent: StoredGraph = {
+    ...parentGraph,
+    data: { ...parentGraph.data, nodes: updatedParentNodes },
+    childGraphIds: [...(parentGraph.childGraphIds || []), childGraph.id]
+  };
+  
+  // Mark root node in child graph (assume first node is root)
+  const rootNodeUpdated = childGraph.data.nodes.map((node, index) => 
+    index === 0 
+      ? { 
+          ...node, 
+          isRootNode: true, 
+          parentGraphId: parentGraph.id, 
+          parentNodeId: parentNodeId
+        }
+      : node
+  );
+  
+  // Update child graph with parent reference
+  const updatedChild: StoredGraph = {
+    ...childGraph,
+    parentGraphId: parentGraph.id,
+    parentNodeId: parentNodeId,
+    sourceNodeLabel: sourceNodeLabel,
+    data: { ...childGraph.data, nodes: rootNodeUpdated }
+  };
+  
+  return { updatedParent, updatedChild };
+}
+
+/**
+ * Updates a specific node in a graph to mark it as having a child graph
+ */
+export function updateNodeWithChild(
+  graph: StoredGraph, 
+  nodeId: number, 
+  childGraphId: string
+): StoredGraph {
+  const updatedNodes = graph.data.nodes.map(node => 
+    node.id === nodeId 
+      ? { ...node, hasChildGraph: true, childGraphId }
+      : node
+  );
+  
+  return {
+    ...graph,
+    data: { ...graph.data, nodes: updatedNodes },
+    childGraphIds: [...(graph.childGraphIds || []), childGraphId]
+  };
+}
+
+/**
+ * Marks the root node in a child graph with parent relationship data
+ */
+export function markRootNode(
+  graph: StoredGraph, 
+  nodeLabel: string, 
+  parentGraphId: string, 
+  parentNodeId: number
+): StoredGraph {
+  const updatedNodes = graph.data.nodes.map((node, index) => 
+    index === 0 // Assume first node is root
+      ? { 
+          ...node, 
+          isRootNode: true, 
+          parentGraphId, 
+          parentNodeId
+        }
+      : node
+  );
+  
+  return {
+    ...graph,
+    data: { ...graph.data, nodes: updatedNodes }
+  };
+}
+
+/**
+ * Finds a parent node by ID in a graph
+ */
+export function findParentNode(
+  parentGraph: StoredGraph, 
+  nodeId: number
+): ApiNode | null {
+  return parentGraph.data.nodes.find(node => node.id === nodeId) || null;
+}
+
+/**
+ * Gets all graphs connected to a given graph (both ancestors and descendants)
+ */
+export function getConnectedGraphs(
+  rootGraph: StoredGraph, 
+  allGraphs: StoredGraph[]
+): StoredGraph[] {
+  const visited = new Set<string>();
+  const connected: StoredGraph[] = [];
+  
+  function traverse(graph: StoredGraph) {
+    if (visited.has(graph.id)) return;
+    visited.add(graph.id);
+    connected.push(graph);
+    
+    // Add child graphs
+    graph.childGraphIds?.forEach(childId => {
+      const childGraph = allGraphs.find(g => g.id === childId);
+      if (childGraph) traverse(childGraph);
+    });
+    
+    // Add parent graph
+    if (graph.parentGraphId) {
+      const parentGraph = allGraphs.find(g => g.id === graph.parentGraphId);
+      if (parentGraph) traverse(parentGraph);
+    }
+  }
+  
+  traverse(rootGraph);
+  return connected;
+}
+
+/**
+ * Extracts relationship mappings from connected graphs
+ */
+export function extractRelationships(graphs: StoredGraph[]): Array<{
+  parentGraphId: string;
+  parentNodeId: number;
+  childGraphId: string;
+  sourceNodeLabel: string;
+}> {
+  const relationships: Array<{
+    parentGraphId: string;
+    parentNodeId: number;
+    childGraphId: string;
+    sourceNodeLabel: string;
+  }> = [];
+  
+  graphs.forEach(graph => {
+    if (graph.parentGraphId && graph.parentNodeId && graph.sourceNodeLabel) {
+      relationships.push({
+        parentGraphId: graph.parentGraphId,
+        parentNodeId: graph.parentNodeId,
+        childGraphId: graph.id,
+        sourceNodeLabel: graph.sourceNodeLabel
+      });
+    }
+  });
+  
+  return relationships;
+}

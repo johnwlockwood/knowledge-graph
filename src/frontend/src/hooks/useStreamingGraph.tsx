@@ -14,6 +14,9 @@ interface StreamingResult {
   model: string;
   status: string;
   message: string;
+  parentGraphId?: string;
+  parentNodeId?: number;
+  sourceNodeLabel?: string;
 }
 
 interface StreamingState {
@@ -52,7 +55,10 @@ export function useStreamingGraph() {
     subject: string,
     model: string,
     onComplete: (graph: StoredGraph) => void,
-    turnstileToken?: string
+    turnstileToken?: string,
+    parentGraphId?: string,
+    parentNodeId?: number,
+    sourceNodeLabel?: string
   ) => {
     // Cancel any existing streaming
     if (abortControllerRef.current) {
@@ -85,7 +91,10 @@ export function useStreamingGraph() {
         body: JSON.stringify({
           subject: subject,
           model: model,
-          turnstile_token: turnstileToken
+          turnstile_token: turnstileToken,
+          parent_graph_id: parentGraphId,
+          parent_node_id: parentNodeId,
+          source_node_label: sourceNodeLabel
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -309,5 +318,9 @@ function createStoredGraph(
     createdAt,
     subject: streamingResult?.subject || subject,
     model: streamingResult?.model || model,
+    // Include parent relationship data from streaming response
+    parentGraphId: streamingResult?.parentGraphId,
+    parentNodeId: streamingResult?.parentNodeId,
+    sourceNodeLabel: streamingResult?.sourceNodeLabel,
   };
 }
