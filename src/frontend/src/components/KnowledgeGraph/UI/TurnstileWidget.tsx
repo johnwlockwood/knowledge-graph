@@ -21,8 +21,6 @@ export function TurnstileWidget({ onVerify, onError, siteKey }: TurnstileWidgetP
       
       if (hiddenInput) {
         setIsVisible(false);
-        // Auto-verify when invisible (assuming this is a test/development environment)
-        onVerify('invisible-turnstile-token');
       } else {
         setIsVisible(true);
       }
@@ -36,14 +34,13 @@ export function TurnstileWidget({ onVerify, onError, siteKey }: TurnstileWidgetP
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, [onVerify]);
-
-  if (!isVisible) {
-    return null; // Hide the entire widget
-  }
+  }, []);
 
   return (
-    <div ref={containerRef} className="flex justify-center">
+    <div 
+      ref={containerRef} 
+      className={`flex justify-center overflow-hidden ${!isVisible ? 'h-0' : ''}`}
+    >
       <Turnstile
         siteKey={siteKey}
         onSuccess={onVerify}
