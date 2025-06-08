@@ -49,7 +49,8 @@ export function useStreamingGraph() {
   const startStreaming = useCallback(async (
     subject: string,
     model: string,
-    onComplete: (graph: StoredGraph) => void
+    onComplete: (graph: StoredGraph) => void,
+    turnstileToken?: string
   ) => {
     // Cancel any existing streaming
     if (abortControllerRef.current) {
@@ -81,7 +82,8 @@ export function useStreamingGraph() {
         },
         body: JSON.stringify({
           subject: subject,
-          model: model
+          model: model,
+          turnstile_token: turnstileToken
         }),
         signal: abortControllerRef.current.signal,
       });
