@@ -6,12 +6,10 @@ import uuid
 from collections.abc import AsyncGenerator
 from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 
 
-p = find_dotenv()
-if p:
-    load_dotenv(p)
+load_dotenv()
 logger = logging.getLogger(__name__)  # __name__ = "app.graph"
 logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()

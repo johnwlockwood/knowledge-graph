@@ -5,18 +5,15 @@ import logging
 import time
 import collections.abc
 from typing import Literal
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 from graph import agenerate_graph, stream_generate_graph, stream_generate_users
 
-p = find_dotenv()
-if p:
-    load_dotenv(p)
 
-
+load_dotenv()
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
 
 
