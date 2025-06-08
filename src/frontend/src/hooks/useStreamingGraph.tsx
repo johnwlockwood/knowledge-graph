@@ -150,10 +150,6 @@ export function useStreamingGraph() {
                   ...prev,
                   isStreaming: false,
                   status: 'Complete',
-                  progress: {
-                    nodesCount: 0,
-                    edgesCount: 0,
-                  },
                 }));
 
                 onComplete(finalGraph);
