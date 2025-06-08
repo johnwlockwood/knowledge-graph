@@ -4,6 +4,7 @@ import { StoredGraph, STORAGE_KEYS } from '@/utils/constants';
 import { useStreamingGraph } from '@/hooks/useStreamingGraph';
 import { ModelSelector, AvailableModel } from './UI/ModelSelector';
 import { StreamingProgress } from './UI/StreamingProgress';
+import { TurnstileWidget } from './UI/TurnstileWidget';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/hooks/useLocalStorage';
 
 interface StreamingGraphGeneratorProps {
@@ -15,6 +16,7 @@ interface StreamingGraphGeneratorProps {
 export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   
   // Track handled errors to prevent infinite re-renders
   const handledErrorRef = useRef<string | null>(null);
@@ -80,6 +82,10 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
 
   const handleGenerate = async () => {
     if (!subject.trim()) return;
+    if (!turnstileToken) {
+      onToast('Please complete the security verification', 'error');
+      return;
+    }
     
     // Clear any previous streaming state before starting new generation
     resetState();
@@ -89,7 +95,8 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
         onGraphGenerated(graph);
         onToast(`Generated "${graph.title}" knowledge graph with ${graph.data.nodes.length} nodes and ${graph.data.edges.length} connections`, 'success');
         setSubject(''); // Clear input on success
-      });
+        setTurnstileToken(null); // Reset Turnstile token
+      }, turnstileToken);
     } catch (err) {
       onToast('Failed to start streaming. Please try again.', 'error');
       console.error(err);
@@ -123,7 +130,7 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
           />
           <button
             onClick={handleGenerate}
-            disabled={isStreaming || !subject.trim()}
+            disabled={isStreaming || !subject.trim() || !turnstileToken}
             className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {isStreaming ? (
@@ -154,6 +161,18 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
             />
           </div>
         </details>
+
+        {/* Turnstile Security Verification */}
+        <div className="mt-4">
+          <TurnstileWidget
+            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+            onVerify={setTurnstileToken}
+            onError={() => {
+              setTurnstileToken(null);
+              onToast('Security verification failed. Please try again.', 'error');
+            }}
+          />
+        </div>
       </div>
 
       {/* Streaming Progress */}

@@ -4,6 +4,7 @@ import json
 import logging
 import time
 import collections.abc
+import httpx
 from typing import Literal, Dict, Tuple
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, Depends
@@ -15,6 +16,7 @@ from graph import agenerate_graph, stream_generate_graph, stream_generate_users
 
 load_dotenv()
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
+TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY")
 
 
 # Configure package-level logger
@@ -92,6 +94,35 @@ async def check_rate_limit(request: Request) -> None:
         rate_limit_storage[client_ip] = (1, current_time)
     
     module_logger.debug(f"Rate limit check passed for IP {client_ip}: {rate_limit_storage.get(client_ip, (0, 0))[0]}/{RATE_LIMIT_REQUESTS}")
+
+async def verify_turnstile_token(token: str, client_ip: str) -> bool:
+    """Verify Cloudflare Turnstile token."""
+    if not TURNSTILE_SECRET_KEY:
+        module_logger.warning("Turnstile secret key not configured, skipping verification")
+        return True  # Allow requests if not configured
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                data={
+                    "secret": TURNSTILE_SECRET_KEY,
+                    "response": token,
+                    "remoteip": client_ip,
+                }
+            )
+            result = response.json()
+            
+            if result.get("success"):
+                module_logger.debug(f"Turnstile verification successful for IP {client_ip}")
+                return True
+            else:
+                module_logger.warning(f"Turnstile verification failed for IP {client_ip}: {result.get('error-codes', [])}")
+                return False
+                
+    except Exception as e:
+        module_logger.error(f"Turnstile verification error: {e}")
+        return False
 
 app = FastAPI()
 
@@ -211,6 +242,7 @@ class StreamingGraphRequest(BaseModel):
         | Literal["gpt-4.1-2025-04-14"]
         | Literal["gpt-4o-2024-08-06"]
     )
+    turnstile_token: str | None = None
 
 
 @app.get("/")
@@ -245,6 +277,28 @@ async def stream_generate_knowledge_graph(
     the specified model.
     This endpoint streams the graph entities as they are generated.
     """
+    # Verify Turnstile token if provided
+    if request.turnstile_token:
+        client_ip = get_client_ip(http_request)
+        is_valid = await verify_turnstile_token(request.turnstile_token, client_ip)
+        if not is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Invalid security verification",
+                    "message": "Security verification failed. Please try again."
+                }
+            )
+    elif TURNSTILE_SECRET_KEY:
+        # If Turnstile is configured but no token provided, reject request
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Security verification required",
+                "message": "Security verification token is required."
+            }
+        )
+    
     return StreamingResponse(
         generate_graph_stream_response(request.subject, request.model),
         media_type="text/event-stream",
