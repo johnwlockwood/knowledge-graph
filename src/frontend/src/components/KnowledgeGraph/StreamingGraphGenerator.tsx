@@ -163,7 +163,6 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
         </details>
 
         {/* Turnstile Security Verification */}
-        <div className="mt-4">
           <TurnstileWidget
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
             onVerify={setTurnstileToken}
@@ -172,7 +171,6 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
               onToast('Security verification failed. Please try again.', 'error');
             }}
           />
-        </div>
       </div>
 
       {/* Streaming Progress */}

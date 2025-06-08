@@ -9,7 +9,7 @@ interface TurnstileWidgetProps {
 
 export function TurnstileWidget({ onVerify, onError, siteKey }: TurnstileWidgetProps) {
   return (
-    <div className="flex justify-center py-2">
+    <div className="flex justify-center">
       <Turnstile
         siteKey={siteKey}
         onSuccess={onVerify}
