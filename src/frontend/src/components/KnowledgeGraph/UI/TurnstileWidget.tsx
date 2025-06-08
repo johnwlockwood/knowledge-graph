@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef, forwardRef } from 'react';
+import { useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
 
 interface TurnstileWidgetProps {
@@ -32,14 +32,15 @@ export const TurnstileWidget = forwardRef<{ resetWidget?: () => void }, Turnstil
       }
     }, []);
 
-    // Expose reset function via ref callback
+    // Expose resetWidget method using useImperativeHandle
+    useImperativeHandle(ref, () => ({
+      resetWidget: reset
+    }), [reset]);
+
+    // Set turnstile ref callback
     const setTurnstileRef = useCallback((instance: TurnstileInstance | null) => {
       turnstileRef.current = instance;
-      if (instance) {
-        // Attach reset function to parent
-        (ref as React.MutableRefObject<{ resetWidget?: () => void }>).current = { resetWidget: reset };
-      }
-    }, [ref, reset]);
+    }, []);
 
     return (
       <div ref={containerRef} className={`flex justify-center overflow-hidden transition-all duration-300 ${!isVisible ? 'h-0' : ''}`}>
