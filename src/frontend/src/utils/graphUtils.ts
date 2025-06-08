@@ -34,11 +34,11 @@ export function getContrastColor(colorInput: string): string {
     document.body.removeChild(tempElement);
 
     const rgbValues = computedColor.match(/\d+/g)?.map(Number).slice(0, 3);
-    
+
     if (rgbValues && rgbValues.length === 3) {
       const hexColor = `#${rgbToHex(rgbValues[0])}${rgbToHex(rgbValues[1])}${rgbToHex(rgbValues[2])}`;
       const cleanHex = hexColor.replace('#', '');
-      
+
       // Parse RGB values
       const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
       const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
@@ -48,12 +48,12 @@ export function getContrastColor(colorInput: string): string {
       const rSRGB = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
       const gSRGB = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
       const bSRGB = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
-      
+
       const luminance = 0.2126 * rSRGB + 0.7152 * gSRGB + 0.0722 * bSRGB;
 
       // Determine contrast color
       const contrastColor = luminance > 0.179 ? '#000000' : '#FFFFFF';
-      
+
       // Cache result
       colorCache.set(colorInput, contrastColor);
       return contrastColor;
@@ -61,7 +61,7 @@ export function getContrastColor(colorInput: string): string {
   } catch (e) {
     console.error('Error converting color:', e);
   }
-  
+
   // Fallback to black text if conversion fails
   return '#000000';
 }
@@ -89,33 +89,32 @@ export const originalColors = new Map<string, string>();
 
 // Map graph data for vis-network
 export function mapGraphData(
-  data: { nodes: ApiNode[]; edges: ApiEdge[] }, 
-  edgesDataSetRef: React.MutableRefObject<DataSet<object> | null>
+  data: { nodes: ApiNode[]; edges: ApiEdge[] },
+  edgesDataSetRef: React.RefObject<DataSet<object> | null>
 ) {
   // Clear previous original labels and colors
   originalLabels.clear();
   originalColors.clear();
-  
+
   const edgesDataSet = new DataSet(data.edges.map(edge => {
     const edgeId = `${edge.source}-${edge.target}-${edge.label}`;
-    const truncatedLabel = truncateLabel(edge.label);
-    
+
     // Store original label and color for hover functionality
     originalLabels.set(edgeId, edge.label);
     originalColors.set(edgeId, edge.color);
-    
+
     return {
       id: edgeId,
       from: edge.source,
       to: edge.target,
-      label: truncatedLabel,
+      label: edge.label,
       color: edge.color
     };
   }));
-  
+
   // Store reference to edges DataSet
   edgesDataSetRef.current = edgesDataSet;
-  
+
   return {
     nodes: new DataSet(data.nodes.map(node => ({
       id: node.id,
@@ -168,9 +167,8 @@ export const getNetworkOptions = () => ({
       face: "Inter, Arial, sans-serif",
       color: "#374151",
       strokeWidth: 1,
-      strokeColor: "#000000",
-      align: "middle",
-      background: "rgba(255,255,255,0.7)"
+      strokeColor: "rgba(255,255,255,0.7)",
+      align: "horizontal"
     }
   },
   physics: {
@@ -180,5 +178,8 @@ export const getNetworkOptions = () => ({
       springConstant: 0.04,
       springLength: 200
     }
-  }
+  },
+  layout: {
+    hierarchical: false,
+  },
 });
