@@ -11,9 +11,10 @@ interface StreamingGraphGeneratorProps {
   onGraphGenerated: (graph: StoredGraph) => void;
   onToast: (message: string, type: 'success' | 'error') => void;
   onResetState?: (resetFn: () => void) => void;
+  onSetInputSubject?: (setSubjectFn: (subject: string) => void) => void;
 }
 
-export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState }: StreamingGraphGeneratorProps) {
+export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState, onSetInputSubject }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -60,6 +61,13 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
       onResetState(resetState);
     }
   }, [onResetState, resetState]);
+
+  // Expose setSubject function to parent component
+  useEffect(() => {
+    if (onSetInputSubject) {
+      onSetInputSubject(setSubject);
+    }
+  }, [onSetInputSubject]);
 
   // Set up Turnstile reset callback
   useEffect(() => {
@@ -115,6 +123,11 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
         onToast(`Generated "${graph.title}" knowledge graph with ${graph.data.nodes.length} nodes and ${graph.data.edges.length} connections`, 'success');
         setSubject(''); // Clear input on success
         setTurnstileToken(null); // Reset Turnstile token
+        
+        // Reset Turnstile widget to get a new token
+        if (turnstileWidgetRef.current?.resetWidget) {
+          turnstileWidgetRef.current.resetWidget();
+        }
       }, turnstileToken);
     } catch (err) {
       onToast('Failed to start streaming. Please try again.', 'error');
