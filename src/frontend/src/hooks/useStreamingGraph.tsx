@@ -45,6 +45,8 @@ export function useStreamingGraph() {
   const streamingResultRef = useRef<StreamingResult | null>(null);
   const currentNodesRef = useRef<ApiNode[]>([]);
   const currentEdgesRef = useRef<ApiEdge[]>([]);
+  const onTurnstileRemountRef = useRef<(() => void) | null>(null);
+  const pendingRequestRef = useRef<{subject: string, model: string, onComplete: (graph: StoredGraph) => void} | null>(null);
 
   const startStreaming = useCallback(async (
     subject: string,
@@ -89,6 +91,30 @@ export function useStreamingGraph() {
       });
 
       if (!response.ok) {
+        // Handle 400 errors as potential Turnstile token expiration
+        if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}));
+          if (errorData.detail?.error === 'Invalid security verification' || 
+              errorData.detail?.error === 'Security verification required') {
+            
+            // Store the request for retry after re-verification
+            pendingRequestRef.current = { subject, model, onComplete };
+            
+            setState(prev => ({
+              ...prev,
+              isStreaming: false,
+              status: 'Security verification expired - please verify again',
+              error: 'Security verification expired',
+            }));
+            
+            // Trigger Turnstile remount
+            if (onTurnstileRemountRef.current) {
+              onTurnstileRemountRef.current();
+            }
+            
+            return;
+          }
+        }
         throw new Error(`API error: ${response.status}`);
       }
 
@@ -240,11 +266,28 @@ export function useStreamingGraph() {
     });
   }, []);
 
+  const setTurnstileRemountCallback = useCallback((callback: () => void) => {
+    onTurnstileRemountRef.current = callback;
+  }, []);
+
+  const retryPendingRequest = useCallback(async (newToken: string) => {
+    const pending = pendingRequestRef.current;
+    if (!pending) return;
+    
+    // Clear the pending request
+    pendingRequestRef.current = null;
+    
+    // Retry the original request with new token
+    await startStreaming(pending.subject, pending.model, pending.onComplete, newToken);
+  }, [startStreaming]);
+
   return {
     ...state,
     startStreaming,
     cancelStreaming,
     resetState,
+    setTurnstileRemountCallback,
+    retryPendingRequest,
   };
 }
 
