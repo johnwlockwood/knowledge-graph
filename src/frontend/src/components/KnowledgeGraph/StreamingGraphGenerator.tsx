@@ -12,9 +12,10 @@ interface StreamingGraphGeneratorProps {
   onToast: (message: string, type: 'success' | 'error') => void;
   onResetState?: (resetFn: () => void) => void;
   onSetInputSubject?: (setSubjectFn: (subject: string) => void) => void;
+  onSetGenerateFromNode?: (generateFn: (subject: string) => Promise<void>) => void;
 }
 
-export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState, onSetInputSubject }: StreamingGraphGeneratorProps) {
+export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState, onSetInputSubject, onSetGenerateFromNode }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -134,6 +135,39 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
       console.error(err);
     }
   };
+
+  // Function to generate from a specific subject (called from graph visualization)
+  const generateFromNode = useCallback(async (nodeSubject: string) => {
+    if (!turnstileToken) {
+      onToast('Please complete the security verification first', 'error');
+      return;
+    }
+    
+    // Clear any previous streaming state before starting new generation
+    resetState();
+    
+    try {
+      await startStreaming(nodeSubject, selectedModel, (graph: StoredGraph) => {
+        onGraphGenerated(graph);
+        onToast(`Generated "${graph.title}" knowledge graph with ${graph.data.nodes.length} nodes and ${graph.data.edges.length} connections`, 'success');
+        
+        // Reset Turnstile widget to get a new token for next generation
+        if (turnstileWidgetRef.current?.resetWidget) {
+          turnstileWidgetRef.current.resetWidget();
+        }
+      }, turnstileToken);
+    } catch (err) {
+      onToast('Failed to start streaming. Please try again.', 'error');
+      console.error(err);
+    }
+  }, [turnstileToken, selectedModel, startStreaming, onGraphGenerated, onToast, resetState]);
+
+  // Expose generateFromNode function to parent component
+  useEffect(() => {
+    if (onSetGenerateFromNode) {
+      onSetGenerateFromNode(generateFromNode);
+    }
+  }, [onSetGenerateFromNode, generateFromNode]);
 
   const handleCancel = () => {
     cancelStreaming();

@@ -20,6 +20,7 @@ export default function KnowledgeGraph() {
   // Ref to store the streaming reset function and input setter
   const streamingResetRef = useRef<(() => void) | null>(null);
   const setInputSubjectRef = useRef<((subject: string) => void) | null>(null);
+  const generateFromNodeRef = useRef<((subject: string) => Promise<void>) | null>(null);
 
   const {
     allGraphs,
@@ -70,6 +71,11 @@ export default function KnowledgeGraph() {
     setInputSubjectRef.current = setSubjectFn;
   };
 
+  // Handle generation function registration
+  const handleSetGenerateFromNode = (generateFn: (subject: string) => Promise<void>) => {
+    generateFromNodeRef.current = generateFn;
+  };
+
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -101,6 +107,18 @@ export default function KnowledgeGraph() {
       setInputSubjectRef.current(newSubject);
     }
   }, [graphMetadata.subject]);
+
+  // Handle node deselection
+  const handleNodeDeselect = useCallback(() => {
+    // Clear any node-specific state if needed
+  }, []);
+
+  // Handle generation from selected node
+  const handleGenerateFromNode = useCallback(async (subject: string) => {
+    if (generateFromNodeRef.current) {
+      await generateFromNodeRef.current(subject);
+    }
+  }, []);
 
   // Get delete confirmation graph title
   const deleteConfirmGraph = showDeleteConfirm ? allGraphs.find(g => g.id === showDeleteConfirm) : null;
@@ -161,6 +179,7 @@ export default function KnowledgeGraph() {
           onToast={handleToast}
           onResetState={handleStreamingResetState}
           onSetInputSubject={handleSetInputSubject}
+          onSetGenerateFromNode={handleSetGenerateFromNode}
         />
         
         {/* Graph Display Container */}
@@ -192,6 +211,8 @@ export default function KnowledgeGraph() {
               metadata={graphMetadata}
               graphId={currentGraph?.id}
               onNodeSelect={handleNodeSelect}
+              onNodeDeselect={handleNodeDeselect}
+              onGenerateFromNode={handleGenerateFromNode}
             />
           )}
         </div>
