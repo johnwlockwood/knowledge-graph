@@ -34,12 +34,21 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const [selectedNodeLabel, setSelectedNodeLabel] = useState<string | null>(null);
   const [isGeneratingFromNode, setIsGeneratingFromNode] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const lastNodeCountRef = useRef<number>(0);
   const lastEdgeCountRef = useRef<number>(0);
   const currentGraphIdRef = useRef<string | undefined>(undefined);
 
   const currentGraphData = graphData || INITIAL_DATA;
   const truncatedSubject = truncateLabel(metadata.subject, 20);
+
+  // Detect touch device on mount
+  useEffect(() => {
+    const checkTouchDevice = () => {
+      setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+    checkTouchDevice();
+  }, []);
 
   // Handle generation from selected node
   const handleGenerateFromNode = async () => {
@@ -54,6 +63,25 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       setIsGeneratingFromNode(false);
       setSelectedNodeLabel(null);
       setIsPreviewExpanded(false);
+    }
+  };
+
+  // Handle text interaction based on device type
+  const handleTextMouseEnter = () => {
+    if (!isTouchDevice) {
+      setIsPreviewExpanded(true);
+    }
+  };
+
+  const handleTextMouseLeave = () => {
+    if (!isTouchDevice) {
+      setIsPreviewExpanded(false);
+    }
+  };
+
+  const handleTextClick = () => {
+    if (isTouchDevice) {
+      setIsPreviewExpanded(prev => !prev);
     }
   };
 
@@ -333,13 +361,19 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-500 mb-1">Generate from selection:</div>
+              <div className="text-xs text-gray-500 mb-1">
+                Generate from selection:
+                {isTouchDevice && (
+                  <span className="ml-1 text-xs text-gray-400">(tap to expand)</span>
+                )}
+              </div>
               <div 
-                className={`text-sm font-medium text-gray-800 cursor-default transition-all duration-200 ${
+                className={`text-sm font-medium text-gray-800 transition-all duration-200 select-none ${
                   isPreviewExpanded ? 'whitespace-normal' : 'truncate'
-                }`}
-                onMouseEnter={() => setIsPreviewExpanded(true)}
-                onMouseLeave={() => setIsPreviewExpanded(false)}
+                } ${isTouchDevice ? 'cursor-pointer hover:text-gray-600 active:text-gray-500' : 'cursor-default hover:text-gray-600'}`}
+                onMouseEnter={handleTextMouseEnter}
+                onMouseLeave={handleTextMouseLeave}
+                onClick={handleTextClick}
                 title={isPreviewExpanded ? '' : `${metadata.subject} → ${selectedNodeLabel}`}
               >
                 {metadata.subject} → {selectedNodeLabel}
