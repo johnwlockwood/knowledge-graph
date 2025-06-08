@@ -89,7 +89,7 @@ async def check_rate_limit(request: Request) -> None:
 
     module_logger.debug(
         f"Rate limit check passed for IP {client_ip}: "
-        f"{rate_limit_storage.get(client_ip, (0, 0))[0]}/{RATE_LIMIT_REQUESTS}"
+        f"{rate_limit_storage.get(client_ip, 0)}/{RATE_LIMIT_REQUESTS}"
     )
 
 
