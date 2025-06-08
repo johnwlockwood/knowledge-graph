@@ -11,9 +11,10 @@ interface StreamingGraphGeneratorProps {
   onGraphGenerated: (graph: StoredGraph) => void;
   onToast: (message: string, type: 'success' | 'error') => void;
   onResetState?: (resetFn: () => void) => void;
+  onSetInputSubject?: (setSubjectFn: (subject: string) => void) => void;
 }
 
-export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState }: StreamingGraphGeneratorProps) {
+export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState, onSetInputSubject }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -60,6 +61,13 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
       onResetState(resetState);
     }
   }, [onResetState, resetState]);
+
+  // Expose setSubject function to parent component
+  useEffect(() => {
+    if (onSetInputSubject) {
+      onSetInputSubject(setSubject);
+    }
+  }, [onSetInputSubject]);
 
   // Set up Turnstile reset callback
   useEffect(() => {

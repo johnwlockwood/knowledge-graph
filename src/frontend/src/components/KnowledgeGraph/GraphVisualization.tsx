@@ -19,9 +19,10 @@ interface GraphVisualizationProps {
   metadata: GraphMetadata;
   isStreaming?: boolean;
   graphId?: string; // Optional graph ID to detect graph changes
+  onNodeSelect?: (nodeLabel: string) => void; // Callback for node selection
 }
 
-export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -80,6 +81,20 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       networkRef.current.once('afterDrawing', () => {
         networkRef.current?.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
       });
+
+      // Add node selection event listener
+      if (onNodeSelect) {
+        networkRef.current.on('selectNode', (params) => {
+          if (params.nodes.length > 0) {
+            const selectedNodeId = params.nodes[0];
+            // Find the node data to get the label
+            const nodeData = nodesDataSetRef.current?.get(selectedNodeId);
+            if (nodeData && 'label' in nodeData) {
+              onNodeSelect(nodeData.label as string);
+            }
+          }
+        });
+      }
     };
 
     initializeNetwork();
@@ -90,7 +105,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         networkRef.current.destroy();
       }
     };
-  }, [currentGraphData, isFullscreen]); // Include isFullscreen in dependencies
+  }, [currentGraphData, isFullscreen, onNodeSelect]); // Include isFullscreen and onNodeSelect in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {

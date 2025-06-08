@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useGraphData } from '@/hooks/useGraphData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getGraphTitle } from '@/utils/graphUtils';
@@ -17,8 +17,9 @@ export default function KnowledgeGraph() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  // Ref to store the streaming reset function
+  // Ref to store the streaming reset function and input setter
   const streamingResetRef = useRef<(() => void) | null>(null);
+  const setInputSubjectRef = useRef<((subject: string) => void) | null>(null);
 
   const {
     allGraphs,
@@ -64,6 +65,11 @@ export default function KnowledgeGraph() {
     streamingResetRef.current = resetFn;
   };
 
+  // Handle input subject setter callback
+  const handleSetInputSubject = (setSubjectFn: (subject: string) => void) => {
+    setInputSubjectRef.current = setSubjectFn;
+  };
+
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -87,6 +93,14 @@ export default function KnowledgeGraph() {
     createdAt: Date.now(),
     model: 'gpt-3.5-turbo'
   };
+
+  // Handle node selection from graph
+  const handleNodeSelect = useCallback((nodeLabel: string) => {
+    if (setInputSubjectRef.current) {
+      const newSubject = `${graphMetadata.subject} -> ${nodeLabel}`;
+      setInputSubjectRef.current(newSubject);
+    }
+  }, [graphMetadata.subject]);
 
   // Get delete confirmation graph title
   const deleteConfirmGraph = showDeleteConfirm ? allGraphs.find(g => g.id === showDeleteConfirm) : null;
@@ -146,6 +160,7 @@ export default function KnowledgeGraph() {
           onGraphGenerated={addGraph}
           onToast={handleToast}
           onResetState={handleStreamingResetState}
+          onSetInputSubject={handleSetInputSubject}
         />
         
         {/* Graph Display Container */}
@@ -176,6 +191,7 @@ export default function KnowledgeGraph() {
               graphData={currentGraphData} 
               metadata={graphMetadata}
               graphId={currentGraph?.id}
+              onNodeSelect={handleNodeSelect}
             />
           )}
         </div>
