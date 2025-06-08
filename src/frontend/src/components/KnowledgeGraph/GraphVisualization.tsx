@@ -190,8 +190,8 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
         shadow: true
       }));
 
-      const mappedEdges = currentGraphData.edges.map(edge => {
-        const edgeId = `${edge.source}-${edge.target}`;
+      const mappedEdges = currentGraphData.edges.map((edge, index) => {
+        const edgeId = `${edge.source}-${edge.target}-${index}`;
         
         // Store original label for hover functionality
         originalLabels.set(edgeId, edge.label);
@@ -279,8 +279,9 @@ export function GraphVisualization({ graphData, model, isStreaming = false, grap
       // Add new edges
       if (currentEdgeCount > lastEdgeCountRef.current) {
         const newEdges = currentGraphData.edges.slice(lastEdgeCountRef.current);
-        const mappedNewEdges = newEdges.map(edge => {
-          const edgeId = `${edge.source}-${edge.target}`;
+        const mappedNewEdges = newEdges.map((edge, relativeIndex) => {
+          const absoluteIndex = lastEdgeCountRef.current + relativeIndex;
+          const edgeId = `${edge.source}-${edge.target}-${absoluteIndex}`;
           
           // Store original label for hover functionality
           originalLabels.set(edgeId, edge.label);

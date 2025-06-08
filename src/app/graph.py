@@ -34,7 +34,7 @@ class Edge(BaseModel):
     source: int
     target: int
     label: str
-    color: str = "black"
+    color: str
 
 
 class KnowledgeGraph(BaseModel):
