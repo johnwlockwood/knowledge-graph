@@ -44,6 +44,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const lastEdgeCountRef = useRef<number>(0);
   const currentGraphIdRef = useRef<string | undefined>(undefined);
   const selectionDelayRef = useRef<NodeJS.Timeout | null>(null);
+  const capturedSeedsRef = useRef<Set<string>>(new Set()); // Track which graphs have had seeds captured
 
   const currentGraphData = graphData || INITIAL_DATA;
   const truncatedTitle = truncateLabel(metadata.title, 20);
@@ -64,7 +65,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
     const selectedNode = currentGraphData.nodes.find(n => n.label === selectedNodeLabel);
     if (!selectedNode) return;
     
-    const generationSubject = `${metadata.title} → ${selectedNodeLabel}`;
+    const generationSubject = `${metadata.subject} → ${selectedNodeLabel}`;
     setIsGeneratingFromNode(true);
     
     try {
@@ -158,8 +159,9 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       });
 
       // Capture and store the seed for graphs without a stored seed (new graphs or existing graphs needing migration)
-      // Only do this in normal mode, not fullscreen mode
-      if (!layoutSeed && !isFullscreen && graphId && onSeedCaptured) {
+      // Skip only when we already have a seed or when transitioning to fullscreen with existing seed
+      // Allow capture in fullscreen mode when navigating to different graphs that need their seeds captured
+      if (!layoutSeed && graphId && onSeedCaptured && !capturedSeedsRef.current.has(graphId)) {
         networkRef.current.once('stabilized', () => {
           // Add a small delay to ensure everything is fully ready after stabilization
           setTimeout(() => {
@@ -167,7 +169,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
               if (networkRef.current && typeof networkRef.current.getSeed === 'function') {
                 const currentSeed = networkRef.current.getSeed();
                 const seedString = typeof currentSeed === 'string' ? currentSeed : String(currentSeed);
-                console.log(`Capturing layout seed for graph ${graphId}:`, seedString);
+                capturedSeedsRef.current.add(graphId); // Mark this graph as having its seed captured
                 onSeedCaptured(graphId, seedString);
               }
             } catch (error) {
@@ -574,7 +576,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 onClick={handleTextClick}
                 title={isPreviewExpanded ? '' : `${selectedNodeLabel} ← ${metadata.title}`}
               >
-                {metadata.title} → {selectedNodeLabel}
+                {selectedNodeLabel} ← {metadata.title}
               </div>
             </div>
             <button

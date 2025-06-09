@@ -239,6 +239,16 @@ export function useGraphData() {
       saveToLocalStorage(STORAGE_KEYS.GRAPHS, updated);
       return updated;
     });
+    
+    // Also update visibleGraphs to reflect the change
+    setVisibleGraphs(prev => {
+      const updated = prev.map(graph => 
+        graph.id === graphId 
+          ? { ...graph, layoutSeed: seed }
+          : graph
+      );
+      return updated;
+    });
   }, []);
 
   // Clean up broken links (child graphs that no longer exist)
