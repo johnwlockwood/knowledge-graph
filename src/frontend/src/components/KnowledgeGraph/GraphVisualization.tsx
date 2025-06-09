@@ -28,7 +28,7 @@ interface GraphVisualizationProps {
   onSeedCaptured?: (graphId: string, seed: string) => void; // Callback when network seed is captured
 }
 
-export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, layoutSeed, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -39,9 +39,11 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const [isGeneratingFromNode, setIsGeneratingFromNode] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [pointerPosition, setPointerPosition] = useState<{x: number, y: number} | null>(null);
   const lastNodeCountRef = useRef<number>(0);
   const lastEdgeCountRef = useRef<number>(0);
   const currentGraphIdRef = useRef<string | undefined>(undefined);
+  const selectionDelayRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentGraphData = graphData || INITIAL_DATA;
   const truncatedSubject = truncateLabel(metadata.subject, 20);
@@ -98,11 +100,29 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
     setIsFullscreen(prev => !prev);
   };
 
+  // Clear preview state when entering or exiting fullscreen mode
+  useEffect(() => {
+    setSelectedNodeLabel(null);
+    setIsPreviewExpanded(false);
+    setPointerPosition(null);
+  }, [isFullscreen]);
+
   // Initialize network on mount and when fullscreen changes
   useEffect(() => {
     const initializeNetwork = async () => {
       const currentContainer = isFullscreen ? fullscreenContainerRef.current : containerRef.current;
       if (!currentContainer) return;
+
+      // Capture existing seed before destroying network (for fullscreen mode)
+      let existingSeed: string | undefined = undefined;
+      if (networkRef.current && isFullscreen) {
+        try {
+          const seed = networkRef.current.getSeed();
+          existingSeed = typeof seed === 'string' ? seed : String(seed);
+        } catch (error) {
+          console.warn('Could not get network seed:', error);
+        }
+      }
 
       // Destroy existing network if it exists
       if (networkRef.current) {
@@ -124,10 +144,17 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       nodesDataSetRef.current = mappedData.nodes as DataSet<object>;
       edgesDataSetRef.current = mappedData.edges as DataSet<object>;
 
+      // Get base network options and add seed if available
+      const networkOptions = getNetworkOptions();
+      const seedToUse = existingSeed || layoutSeed;
+      if (seedToUse) {
+        (networkOptions.layout as Record<string, unknown>).randomSeed = seedToUse;
+      }
+
       networkRef.current = new Network(
         currentContainer, 
         { nodes: nodesDataSetRef.current, edges: edgesDataSetRef.current },
-        getNetworkOptions()
+        networkOptions
       );
 
       // Store initial counts
@@ -138,6 +165,22 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       networkRef.current.once('afterDrawing', () => {
         networkRef.current?.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
       });
+
+      // Capture and store the seed for graphs without a stored seed (new graphs or existing graphs needing migration)
+      if (!layoutSeed && !existingSeed && graphId && onSeedCaptured) {
+        networkRef.current.once('stabilized', () => {
+          try {
+            if (networkRef.current) {
+              const currentSeed = networkRef.current.getSeed();
+              const seedString = typeof currentSeed === 'string' ? currentSeed : String(currentSeed);
+              console.log(`Capturing layout seed for graph ${graphId}:`, seedString);
+              onSeedCaptured(graphId, seedString);
+            }
+          } catch (error) {
+            console.warn('Could not capture network seed:', error);
+          }
+        });
+      }
 
       // Add node selection event listeners
       if (onNodeSelect) {
@@ -151,14 +194,29 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
             if (nodeData && 'label' in nodeData && originalNode) {
               const nodeLabel = nodeData.label as string;
               
+              // Clear any existing selection delay
+              if (selectionDelayRef.current) {
+                clearTimeout(selectionDelayRef.current);
+              }
+              
               // Don't show generate preview for root nodes (they're for navigation back to parent)
               if (!originalNode.isRootNode) {
-                setSelectedNodeLabel(nodeLabel);
-                onNodeSelect(nodeLabel);
+                // Capture pointer position for smart positioning
+                const domPosition = params.pointer?.DOM;
+                if (domPosition) {
+                  setPointerPosition({ x: domPosition.x, y: domPosition.y });
+                }
+                
+                // Delay showing the preview to avoid interfering with double-click
+                selectionDelayRef.current = setTimeout(() => {
+                  setSelectedNodeLabel(nodeLabel);
+                  onNodeSelect(nodeLabel);
+                }, 300); // 300ms delay - after potential double-click window
               } else {
                 // For root nodes, clear any existing selection but don't trigger generation preview
                 setSelectedNodeLabel(null);
                 setIsPreviewExpanded(false);
+                setPointerPosition(null);
               }
             }
           }
@@ -168,8 +226,15 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       // Add node deselection event listener
       if (onNodeDeselect) {
         networkRef.current.on('deselectNode', () => {
+          // Clear any pending selection delay
+          if (selectionDelayRef.current) {
+            clearTimeout(selectionDelayRef.current);
+            selectionDelayRef.current = null;
+          }
+          
           setSelectedNodeLabel(null);
           setIsPreviewExpanded(false);
+          setPointerPosition(null);
           onNodeDeselect();
         });
       }
@@ -178,6 +243,13 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       networkRef.current.on('doubleClick', (params) => {
         if (params.nodes.length > 0) {
           const nodeId = params.nodes[0];
+          
+          // Clear any pending selection delay immediately on double-click
+          if (selectionDelayRef.current) {
+            clearTimeout(selectionDelayRef.current);
+            selectionDelayRef.current = null;
+          }
+          
           // Find the node data to determine navigation action
           const nodeData = nodesDataSetRef.current?.get(nodeId);
           const originalNode = currentGraphData.nodes.find(n => n.id === nodeId);
@@ -187,11 +259,13 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
               // Clear preview state before navigating to child graph
               setSelectedNodeLabel(null);
               setIsPreviewExpanded(false);
+              setPointerPosition(null);
               onNavigateToChild(nodeId);
             } else if (originalNode.isRootNode && onNavigateToParent) {
               // Clear preview state before navigating to parent graph
               setSelectedNodeLabel(null);
               setIsPreviewExpanded(false);
+              setPointerPosition(null);
               onNavigateToParent(originalNode);
             }
           }
@@ -206,8 +280,12 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       if (networkRef.current) {
         networkRef.current.destroy();
       }
+      // Clear any pending selection delay
+      if (selectionDelayRef.current) {
+        clearTimeout(selectionDelayRef.current);
+      }
     };
-  }, [currentGraphData, isFullscreen, onNodeSelect, onNodeDeselect, onNavigateToChild, onNavigateToParent]); // Include isFullscreen and all callback functions in dependencies
+  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured]); // Include isFullscreen and all callback functions in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {
@@ -224,8 +302,13 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       currentGraphIdRef.current = graphId;
       
       // Clear selection state when navigating to different graph
+      if (selectionDelayRef.current) {
+        clearTimeout(selectionDelayRef.current);
+        selectionDelayRef.current = null;
+      }
       setSelectedNodeLabel(null);
       setIsPreviewExpanded(false);
+      setPointerPosition(null);
       
       // Clear existing data
       nodesDataSetRef.current.clear();
@@ -401,9 +484,25 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       {/* Node Selection Preview Overlay */}
       {selectedNodeLabel && (
         <div 
-          className={`absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-gray-200 z-20 transition-all duration-300 ${
+          className={`absolute bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-gray-200 z-20 transition-all duration-300 ${
             selectedNodeLabel ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
           } ${isPreviewExpanded ? 'max-w-2xl' : 'max-w-md'}`}
+          style={{
+            // Smart positioning based on pointer location
+            ...(pointerPosition ? {
+              // If click was in top half, position below the click
+              // If click was in bottom half, position above the click
+              top: pointerPosition.y < 300 ? `${pointerPosition.y + 60}px` : 'auto',
+              bottom: pointerPosition.y >= 300 ? `${isFullscreenMode ? window.innerHeight - pointerPosition.y + 60 : 600 - pointerPosition.y + 60}px` : 'auto',
+              left: '50%',
+              transform: 'translateX(-50%)'
+            } : {
+              // Fallback to center positioning
+              top: '1rem',
+              left: '50%',
+              transform: 'translateX(-50%)'
+            })
+          }}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -451,7 +550,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         <div className="text-gray-600 mb-2 font-medium">Navigation:</div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border-2 border-indigo-500 bg-gray-200" style={{boxShadow: '0 0 6px rgba(79, 70, 229, 0.5)'}}></div>
+            <div className="w-4 h-4 rounded border-4 border-violet-600 bg-gray-200" style={{boxShadow: '0 0 8px rgba(124, 58, 237, 0.6)'}}></div>
             <span className="text-gray-700">Has sub-graph (double-click)</span>
           </div>
           <div className="flex items-center gap-2">
