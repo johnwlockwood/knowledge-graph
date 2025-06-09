@@ -11,9 +11,10 @@ Before running the application, you need to configure environment variables:
    cp .env.local.example .env.local
    ```
 
-2. Edit `.env.local` and add your Cloudflare Turnstile site key:
+2. Edit `.env.local` and add your configuration:
    ```env
    NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key_here
+   NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN=your_web_analytics_token_here
    ```
 
 ## Feature Flags
@@ -119,6 +120,7 @@ NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPH
 ```env
 # Add to .env.local file for development
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key_here
+NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN=your_web_analytics_token_here
 NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
 ```
 
@@ -131,6 +133,16 @@ NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
 5. Copy the **Secret Key** for the backend configuration (see backend README)
 
 For development/testing, you can use the test key: `1x00000000000000000000AA`
+
+### Getting Cloudflare Web Analytics Token
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Navigate to "Analytics & Logs" → "Web Analytics" in the sidebar
+3. Add your website or select an existing one
+4. Copy the **Web Analytics Token** for the frontend environment variable
+5. The analytics script will only be loaded if the token is provided
+
+**Note**: Web Analytics is optional. If `NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN` is not set, no tracking script will be loaded.
 
 ## Getting Started
 
