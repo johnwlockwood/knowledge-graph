@@ -307,6 +307,27 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
           nodesDataSetRef.current.update({ id: nodeId, title: originalNode.label });
         }
       });
+
+      // Add hover tooltips for edges
+      networkRef.current.on('hoverEdge', (params) => {
+        const edgeId = params.edge;
+        const originalLabel = originalLabels.get(edgeId);
+        
+        if (originalLabel && edgesDataSetRef.current) {
+          // Show the edge label as tooltip
+          edgesDataSetRef.current.update({ id: edgeId, title: originalLabel });
+        }
+      });
+
+      // Clear edge tooltips when not hovering
+      networkRef.current.on('blurEdge', (params) => {
+        const edgeId = params.edge;
+        
+        if (edgesDataSetRef.current) {
+          // Clear the tooltip
+          edgesDataSetRef.current.update({ id: edgeId, title: undefined });
+        }
+      });
     };
 
     initializeNetwork();
