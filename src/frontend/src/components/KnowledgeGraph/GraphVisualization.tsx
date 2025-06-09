@@ -113,16 +113,8 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       const currentContainer = isFullscreen ? fullscreenContainerRef.current : containerRef.current;
       if (!currentContainer) return;
 
-      // Capture existing seed before destroying network (for fullscreen mode)
-      let existingSeed: string | undefined = undefined;
-      if (networkRef.current && isFullscreen) {
-        try {
-          const seed = networkRef.current.getSeed();
-          existingSeed = typeof seed === 'string' ? seed : String(seed);
-        } catch (error) {
-          console.warn('Could not get network seed:', error);
-        }
-      }
+      // For fullscreen mode, we use the layoutSeed that was already captured
+      // No need to get the seed again since it should already be stored
 
       // Destroy existing network if it exists
       if (networkRef.current) {
@@ -146,9 +138,8 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
 
       // Get base network options and add seed if available
       const networkOptions = getNetworkOptions();
-      const seedToUse = existingSeed || layoutSeed;
-      if (seedToUse) {
-        (networkOptions.layout as Record<string, unknown>).randomSeed = seedToUse;
+      if (layoutSeed) {
+        (networkOptions.layout as Record<string, unknown>).randomSeed = layoutSeed;
       }
 
       networkRef.current = new Network(
@@ -167,18 +158,22 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       });
 
       // Capture and store the seed for graphs without a stored seed (new graphs or existing graphs needing migration)
-      if (!layoutSeed && !existingSeed && graphId && onSeedCaptured) {
+      // Only do this in normal mode, not fullscreen mode
+      if (!layoutSeed && !isFullscreen && graphId && onSeedCaptured) {
         networkRef.current.once('stabilized', () => {
-          try {
-            if (networkRef.current) {
-              const currentSeed = networkRef.current.getSeed();
-              const seedString = typeof currentSeed === 'string' ? currentSeed : String(currentSeed);
-              console.log(`Capturing layout seed for graph ${graphId}:`, seedString);
-              onSeedCaptured(graphId, seedString);
+          // Add a small delay to ensure everything is fully ready after stabilization
+          setTimeout(() => {
+            try {
+              if (networkRef.current && typeof networkRef.current.getSeed === 'function') {
+                const currentSeed = networkRef.current.getSeed();
+                const seedString = typeof currentSeed === 'string' ? currentSeed : String(currentSeed);
+                console.log(`Capturing layout seed for graph ${graphId}:`, seedString);
+                onSeedCaptured(graphId, seedString);
+              }
+            } catch (error) {
+              console.warn('Could not capture network seed:', error);
             }
-          } catch (error) {
-            console.warn('Could not capture network seed:', error);
-          }
+          }, 100);
         });
       }
 
