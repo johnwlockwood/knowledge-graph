@@ -39,7 +39,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const [isGeneratingFromNode, setIsGeneratingFromNode] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
-  const [pointerPosition, setPointerPosition] = useState<{x: number, y: number} | null>(null);
+  const [pointerPosition, setPointerPosition] = useState<{x: number, y: number, hasNavigationTooltip?: boolean} | null>(null);
   const lastNodeCountRef = useRef<number>(0);
   const lastEdgeCountRef = useRef<number>(0);
   const currentGraphIdRef = useRef<string | undefined>(undefined);
@@ -204,7 +204,13 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 // Capture pointer position for smart positioning
                 const domPosition = params.pointer?.DOM;
                 if (domPosition) {
-                  setPointerPosition({ x: domPosition.x, y: domPosition.y });
+                  // Check if this node has navigation instructions (affects tooltip height)
+                  const hasNavigationTooltip = originalNode.hasChildGraph;
+                  setPointerPosition({ 
+                    x: domPosition.x, 
+                    y: domPosition.y,
+                    hasNavigationTooltip
+                  });
                 }
                 
                 // Delay showing the preview to avoid interfering with double-click
@@ -269,6 +275,36 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
               onNavigateToParent(originalNode);
             }
           }
+        }
+      });
+
+      // Add hover tooltips for navigation nodes
+      networkRef.current.on('hoverNode', (params) => {
+        const nodeId = params.node;
+        const originalNode = currentGraphData.nodes.find(n => n.id === nodeId);
+        
+        if (originalNode && nodesDataSetRef.current) {
+          let tooltipText = originalNode.label;
+          
+          if (originalNode.hasChildGraph) {
+            tooltipText += '\n\n🔗 Double-click to explore sub-graph';
+          } else if (originalNode.isRootNode) {
+            tooltipText += '\n\n↩️ Double-click to return to parent graph';
+          }
+          
+          // Update the node's title attribute for tooltip
+          nodesDataSetRef.current.update({ id: nodeId, title: tooltipText });
+        }
+      });
+
+      // Clear tooltips when not hovering
+      networkRef.current.on('blurNode', (params) => {
+        const nodeId = params.node;
+        const originalNode = currentGraphData.nodes.find(n => n.id === nodeId);
+        
+        if (originalNode && nodesDataSetRef.current) {
+          // Reset to just the label
+          nodesDataSetRef.current.update({ id: nodeId, title: originalNode.label });
         }
       });
     };
@@ -492,8 +528,9 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
             ...(pointerPosition ? {
               // If click was in top half, position below the click
               // If click was in bottom half, position above the click
-              top: pointerPosition.y < 300 ? `${pointerPosition.y + 60}px` : 'auto',
-              bottom: pointerPosition.y >= 300 ? `${isFullscreenMode ? window.innerHeight - pointerPosition.y + 60 : 600 - pointerPosition.y + 60}px` : 'auto',
+              // Add extra offset for nodes with navigation tooltips (they're taller)
+              top: pointerPosition.y < 300 ? `${pointerPosition.y + (pointerPosition.hasNavigationTooltip ? 100 : 60)}px` : 'auto',
+              bottom: pointerPosition.y >= 300 ? `${isFullscreenMode ? window.innerHeight - pointerPosition.y + (pointerPosition.hasNavigationTooltip ? 100 : 60) : 600 - pointerPosition.y + (pointerPosition.hasNavigationTooltip ? 100 : 60)}px` : 'auto',
               left: '50%',
               transform: 'translateX(-50%)'
             } : {
@@ -545,26 +582,22 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         </div>
       )}
 
-      {/* Navigation Legend */}
-      <div className={`absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200 z-10 ${isFullscreenMode ? 'text-sm' : 'text-xs'}`}>
-        <div className="text-gray-600 mb-2 font-medium">Navigation:</div>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border-4 border-violet-600 bg-gray-200" style={{boxShadow: '0 0 8px rgba(124, 58, 237, 0.6)'}}></div>
-            <span className="text-gray-700">Has sub-graph (double-click)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div 
-              className="w-4 h-4 rounded bg-gray-200"
-              style={{
-                border: '2px dashed #059669',
-                boxShadow: '0 0 6px rgba(5, 150, 105, 0.5)'
-              }}
-            ></div>
-            <span className="text-gray-700">Root node (double-click for parent)</span>
-          </div>
-        </div>
-      </div>
+      {/* Navigation Legend - REMOVED FOR SPACE 
+          Future reference for visual indicators:
+          
+          Purple thick border (6px) + large shadow: 
+          - Color: #7C3AED (violet-600)
+          - Nodes with sub-graphs (double-click to navigate to child)
+          - CSS: border-4 border-violet-600, boxShadow: '0 0 8px rgba(124, 58, 237, 0.6)'
+          
+          Green dashed border + shadow:
+          - Color: #059669 (emerald-600) 
+          - Root nodes (double-click to navigate to parent)
+          - CSS: border: '2px dashed #059669', boxShadow: '0 0 6px rgba(5, 150, 105, 0.5)'
+          
+          Regular nodes: Default styling with no special navigation
+          Hover state: Blue highlight (distinct from navigation indicators)
+      */}
 
       {/* Fullscreen toggle button */}
       <button
