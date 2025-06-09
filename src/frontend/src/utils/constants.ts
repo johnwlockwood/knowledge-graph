@@ -3,6 +3,13 @@ export interface ApiNode {
   id: number;
   label: string;
   color: string;
+  
+  // Enhanced navigation tracking
+  hasChildGraph?: boolean;       // Indicates node has generated sub-graph
+  childGraphId?: string;         // ID of child graph generated from this node
+  isRootNode?: boolean;          // Indicates this is the root node (for parent navigation)
+  parentGraphId?: string;        // ID of parent graph (for root nodes)
+  parentNodeId?: number;         // ID of parent node (for root nodes)
 }
 
 export interface ApiEdge {
@@ -23,6 +30,15 @@ export interface StoredGraph {
   subject: string;
   model: string;
   isExample?: boolean;
+  
+  // Enhanced relationship tracking
+  parentGraphId?: string;        // ID of parent graph
+  parentNodeId?: number;         // ID of specific node in parent graph
+  sourceNodeLabel?: string;      // Label of node that generated this graph
+  childGraphIds?: string[];      // Array of child graph IDs
+  
+  // Layout persistence
+  layoutSeed?: string;           // Network layout seed for consistent positioning
 }
 
 export interface UserPreferences {
@@ -120,6 +136,12 @@ export const EXAMPLE_GRAPHS: StoredGraph[] = [
     isExample: true
   }
 ];
+
+// Feature flags
+export const FEATURE_FLAGS = {
+  ENABLE_SUBGRAPH_GENERATION: process.env.NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION !== 'false', // Default to true, set NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false to disable
+  DISABLE_NESTED_SUBGRAPHS: process.env.NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS === 'true' // Default to false, set NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true to disable sub-graphs from sub-graphs
+} as const;
 
 // Local storage keys
 export const STORAGE_KEYS = {

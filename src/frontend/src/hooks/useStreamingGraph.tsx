@@ -14,6 +14,10 @@ interface StreamingResult {
   model: string;
   status: string;
   message: string;
+  parentGraphId?: string;
+  parentNodeId?: number;
+  sourceNodeLabel?: string;
+  title?: string;
 }
 
 interface StreamingState {
@@ -52,7 +56,11 @@ export function useStreamingGraph() {
     subject: string,
     model: string,
     onComplete: (graph: StoredGraph) => void,
-    turnstileToken?: string
+    turnstileToken?: string,
+    parentGraphId?: string,
+    parentNodeId?: number,
+    sourceNodeLabel?: string,
+    title?: string
   ) => {
     // Cancel any existing streaming
     if (abortControllerRef.current) {
@@ -85,7 +93,11 @@ export function useStreamingGraph() {
         body: JSON.stringify({
           subject: subject,
           model: model,
-          turnstile_token: turnstileToken
+          turnstile_token: turnstileToken,
+          parent_graph_id: parentGraphId,
+          parent_node_id: parentNodeId,
+          source_node_label: sourceNodeLabel,
+          title: title
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -300,7 +312,8 @@ function createStoredGraph(
 ): StoredGraph {
   const id = streamingResult?.id || `graph-${Date.now()}`;
   const createdAt = streamingResult?.createdAt || Date.now();
-  const title = nodes.length > 0 ? nodes[0].label : subject;
+  // Use title from streaming result if available, otherwise fallback to node label or subject
+  const title = streamingResult?.title || (nodes.length > 0 ? nodes[0].label : subject);
 
   return {
     id,
@@ -309,5 +322,9 @@ function createStoredGraph(
     createdAt,
     subject: streamingResult?.subject || subject,
     model: streamingResult?.model || model,
+    // Include parent relationship data from streaming response
+    parentGraphId: streamingResult?.parentGraphId,
+    parentNodeId: streamingResult?.parentNodeId,
+    sourceNodeLabel: streamingResult?.sourceNodeLabel,
   };
 }

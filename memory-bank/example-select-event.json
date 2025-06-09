@@ -1,0 +1,58 @@
+{
+    "pointer": {
+        "DOM": {
+            "x": 208,
+            "y": 249.5
+        },
+        "canvas": {
+            "x": -98.3637323759193,
+            "y": 76.53795191104533
+        }
+    },
+    "event": {
+        "pointers": [],
+        "changedPointers": [
+            {
+                "isTrusted": true
+            }
+        ],
+        "pointerType": "mouse",
+        "srcEvent": {
+            "isTrusted": true
+        },
+        "isFirst": false,
+        "isFinal": true,
+        "eventType": 4,
+        "center": {
+            "x": 217,
+            "y": 301
+        },
+        "timeStamp": 1749424998311,
+        "deltaTime": 84,
+        "angle": 0,
+        "distance": 0,
+        "deltaX": 0,
+        "deltaY": 0,
+        "offsetDirection": 1,
+        "overallVelocityX": 0,
+        "overallVelocityY": 0,
+        "overallVelocity": 0,
+        "scale": 1,
+        "rotation": 0,
+        "maxPointers": 1,
+        "velocity": 0,
+        "velocityX": 0,
+        "velocityY": 0,
+        "direction": 1,
+        "target": {},
+        "type": "tap",
+        "tapCount": 1
+    },
+    "nodes": [
+        1
+    ],
+    "edges": [
+        "e2bdf9a4-7282-4010-8980-3ae7d5f04e6c",
+        "1e4ff52e-6994-4bb4-b676-26f758eee566"
+    ]
+}

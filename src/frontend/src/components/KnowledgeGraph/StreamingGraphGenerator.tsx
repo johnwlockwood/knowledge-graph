@@ -8,14 +8,20 @@ import { TurnstileWidget } from './UI/TurnstileWidget';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/hooks/useLocalStorage';
 
 interface StreamingGraphGeneratorProps {
-  onGraphGenerated: (graph: StoredGraph) => void;
+  onGraphGenerated: (
+    graph: StoredGraph, 
+    parentGraphId?: string, 
+    parentNodeId?: number, 
+    sourceNodeLabel?: string
+  ) => void;
   onToast: (message: string, type: 'success' | 'error') => void;
   onResetState?: (resetFn: () => void) => void;
   onSetInputSubject?: (setSubjectFn: (subject: string) => void) => void;
-  onSetGenerateFromNode?: (generateFn: (subject: string) => Promise<void>) => void;
+  onSetGenerateFromNode?: (generateFn: (subject: string, sourceNodeId?: number, sourceNodeLabel?: string) => Promise<void>) => void;
+  currentGraph?: StoredGraph; // Current graph context for parent relationships
 }
 
-export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState, onSetInputSubject, onSetGenerateFromNode }: StreamingGraphGeneratorProps) {
+export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState, onSetInputSubject, onSetGenerateFromNode, currentGraph }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
   const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -137,7 +143,11 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
   };
 
   // Function to generate from a specific subject (called from graph visualization)
-  const generateFromNode = useCallback(async (nodeSubject: string) => {
+  const generateFromNode = useCallback(async (
+    nodeSubject: string, 
+    sourceNodeId?: number, 
+    sourceNodeLabel?: string
+  ) => {
     if (!turnstileToken) {
       onToast('Please complete the security verification first', 'error');
       return;
@@ -147,25 +157,46 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
     resetState();
     
     try {
-      await startStreaming(nodeSubject, selectedModel, (graph: StoredGraph) => {
-        onGraphGenerated(graph);
-        onToast(`Generated "${graph.title}" knowledge graph with ${graph.data.nodes.length} nodes and ${graph.data.edges.length} connections`, 'success');
-        
-        // Reset Turnstile widget to get a new token for next generation
-        if (turnstileWidgetRef.current?.resetWidget) {
-          turnstileWidgetRef.current.resetWidget();
-        }
-      }, turnstileToken);
+      const parentGraphId = currentGraph?.id;
+      
+      // Generate hierarchical title: "Selected Node <- Immediate Parent"
+      // Extract just the immediate parent title (first part before any existing arrows)
+      const hierarchicalTitle = currentGraph && sourceNodeLabel 
+        ? `${sourceNodeLabel} ← ${currentGraph.title.split(' ← ')[0]}`
+        : undefined;
+      
+      await startStreaming(
+        nodeSubject, 
+        selectedModel, 
+        (graph: StoredGraph) => {
+          onGraphGenerated(graph, parentGraphId, sourceNodeId, sourceNodeLabel);
+          onToast(`Generated "${graph.title}" knowledge graph with ${graph.data.nodes.length} nodes and ${graph.data.edges.length} connections`, 'success');
+          
+          // Reset Turnstile widget to get a new token for next generation
+          if (turnstileWidgetRef.current?.resetWidget) {
+            turnstileWidgetRef.current.resetWidget();
+          }
+        }, 
+        turnstileToken, 
+        parentGraphId, 
+        sourceNodeId, 
+        sourceNodeLabel,
+        hierarchicalTitle
+      );
     } catch (err) {
       onToast('Failed to start streaming. Please try again.', 'error');
       console.error(err);
     }
-  }, [turnstileToken, selectedModel, startStreaming, onGraphGenerated, onToast, resetState]);
+  }, [turnstileToken, selectedModel, startStreaming, onGraphGenerated, onToast, resetState, currentGraph]);
 
   // Expose generateFromNode function to parent component
   useEffect(() => {
     if (onSetGenerateFromNode) {
-      onSetGenerateFromNode(generateFromNode);
+      // Create wrapper function that handles the full signature
+      const wrapperGenerateFromNode = async (subject: string, sourceNodeId?: number, sourceNodeLabel?: string) => {
+        await generateFromNode(subject, sourceNodeId, sourceNodeLabel);
+      };
+      onSetGenerateFromNode(wrapperGenerateFromNode);
     }
   }, [onSetGenerateFromNode, generateFromNode]);
 

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DataSet } from 'vis-data';
 import { Network } from 'vis-network/standalone';
-import { ApiNode, ApiEdge, INITIAL_DATA } from '@/utils/constants';
+import { ApiNode, ApiEdge, INITIAL_DATA, FEATURE_FLAGS } from '@/utils/constants';
 import { mapGraphData, getNetworkOptions, originalLabels, originalColors, truncateLabel } from '@/utils/graphUtils';
 import { FullscreenModal } from './UI/FullscreenModal';
 
@@ -19,12 +19,17 @@ interface GraphVisualizationProps {
   metadata: GraphMetadata;
   isStreaming?: boolean;
   graphId?: string; // Optional graph ID to detect graph changes
+  layoutSeed?: string; // Optional layout seed for consistent positioning
   onNodeSelect?: (nodeLabel: string) => void; // Callback for node selection
   onNodeDeselect?: () => void; // Callback for node deselection
-  onGenerateFromNode?: (subject: string) => Promise<void>; // Callback to generate from selected node
+  onGenerateFromNode?: (subject: string, sourceNodeId?: number, sourceNodeLabel?: string) => Promise<void>; // Callback to generate from selected node
+  onNavigateToChild?: (nodeId: number) => void; // Callback to navigate to child graph
+  onNavigateToParent?: (rootNode: ApiNode) => void; // Callback to navigate to parent graph
+  onSeedCaptured?: (graphId: string, seed: string) => void; // Callback when network seed is captured
+  hasParentGraph?: boolean; // Indicates if this graph has a parent (for nested subgraph control)
 }
 
-export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, layoutSeed, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured, hasParentGraph = false }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -35,12 +40,15 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const [isGeneratingFromNode, setIsGeneratingFromNode] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [pointerPosition, setPointerPosition] = useState<{x: number, y: number, hasNavigationTooltip?: boolean} | null>(null);
   const lastNodeCountRef = useRef<number>(0);
   const lastEdgeCountRef = useRef<number>(0);
   const currentGraphIdRef = useRef<string | undefined>(undefined);
+  const selectionDelayRef = useRef<NodeJS.Timeout | null>(null);
+  const capturedSeedsRef = useRef<Set<string>>(new Set()); // Track which graphs have had seeds captured
 
   const currentGraphData = graphData || INITIAL_DATA;
-  const truncatedSubject = truncateLabel(metadata.subject, 20);
+  const truncatedTitle = truncateLabel(metadata.title, 20);
 
   // Detect touch device on mount
   useEffect(() => {
@@ -54,11 +62,15 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const handleGenerateFromNode = async () => {
     if (!selectedNodeLabel || !onGenerateFromNode) return;
     
-    const generationSubject = `${metadata.subject} -> ${selectedNodeLabel}`;
+    // Find the selected node ID
+    const selectedNode = currentGraphData.nodes.find(n => n.label === selectedNodeLabel);
+    if (!selectedNode) return;
+    
+    const generationSubject = `${metadata.subject} → ${selectedNodeLabel}`;
     setIsGeneratingFromNode(true);
     
     try {
-      await onGenerateFromNode(generationSubject);
+      await onGenerateFromNode(generationSubject, selectedNode.id, selectedNodeLabel);
     } finally {
       setIsGeneratingFromNode(false);
       setSelectedNodeLabel(null);
@@ -90,11 +102,21 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
     setIsFullscreen(prev => !prev);
   };
 
+  // Clear preview state when entering or exiting fullscreen mode
+  useEffect(() => {
+    setSelectedNodeLabel(null);
+    setIsPreviewExpanded(false);
+    setPointerPosition(null);
+  }, [isFullscreen]);
+
   // Initialize network on mount and when fullscreen changes
   useEffect(() => {
     const initializeNetwork = async () => {
       const currentContainer = isFullscreen ? fullscreenContainerRef.current : containerRef.current;
       if (!currentContainer) return;
+
+      // For fullscreen mode, we use the layoutSeed that was already captured
+      // No need to get the seed again since it should already be stored
 
       // Destroy existing network if it exists
       if (networkRef.current) {
@@ -116,10 +138,16 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       nodesDataSetRef.current = mappedData.nodes as DataSet<object>;
       edgesDataSetRef.current = mappedData.edges as DataSet<object>;
 
+      // Get base network options and add seed if available
+      const networkOptions = getNetworkOptions();
+      if (layoutSeed) {
+        (networkOptions.layout as Record<string, unknown>).randomSeed = layoutSeed;
+      }
+
       networkRef.current = new Network(
         currentContainer, 
         { nodes: nodesDataSetRef.current, edges: edgesDataSetRef.current },
-        getNetworkOptions()
+        networkOptions
       );
 
       // Store initial counts
@@ -131,17 +159,74 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         networkRef.current?.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
       });
 
+      // Capture and store the seed for graphs without a stored seed (new graphs or existing graphs needing migration)
+      // Skip only when we already have a seed or when transitioning to fullscreen with existing seed
+      // Allow capture in fullscreen mode when navigating to different graphs that need their seeds captured
+      if (!layoutSeed && graphId && onSeedCaptured && !capturedSeedsRef.current.has(graphId)) {
+        networkRef.current.once('stabilized', () => {
+          // Add a small delay to ensure everything is fully ready after stabilization
+          setTimeout(() => {
+            try {
+              if (networkRef.current && typeof networkRef.current.getSeed === 'function') {
+                const currentSeed = networkRef.current.getSeed();
+                const seedString = typeof currentSeed === 'string' ? currentSeed : String(currentSeed);
+                capturedSeedsRef.current.add(graphId); // Mark this graph as having its seed captured
+                onSeedCaptured(graphId, seedString);
+              }
+            } catch (error) {
+              console.warn('Could not capture network seed:', error);
+            }
+          }, 100);
+        });
+      }
+
       // Add node selection event listeners
       if (onNodeSelect) {
         networkRef.current.on('selectNode', (params) => {
           if (params.nodes.length > 0) {
             const selectedNodeId = params.nodes[0];
-            // Find the node data to get the label
+            // Find the original node data to check if it's a root node
+            const originalNode = currentGraphData.nodes.find(n => n.id === selectedNodeId);
             const nodeData = nodesDataSetRef.current?.get(selectedNodeId);
-            if (nodeData && 'label' in nodeData) {
+            
+            if (nodeData && 'label' in nodeData && originalNode) {
               const nodeLabel = nodeData.label as string;
-              setSelectedNodeLabel(nodeLabel);
-              onNodeSelect(nodeLabel);
+              
+              // Clear any existing selection delay
+              if (selectionDelayRef.current) {
+                clearTimeout(selectionDelayRef.current);
+              }
+              
+              // Don't show generate preview for root nodes, nodes that already have child graphs, if feature is disabled, or if nested subgraphs are disabled and this graph has a parent
+              const canGenerateSubgraph = !originalNode.isRootNode && 
+                                        !originalNode.hasChildGraph && 
+                                        FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION && 
+                                        !(FEATURE_FLAGS.DISABLE_NESTED_SUBGRAPHS && hasParentGraph);
+              
+              if (canGenerateSubgraph) {
+                // Capture pointer position for smart positioning
+                const domPosition = params.pointer?.DOM;
+                if (domPosition) {
+                  // Check if this node has navigation instructions (affects tooltip height)
+                  const hasNavigationTooltip = originalNode.hasChildGraph;
+                  setPointerPosition({ 
+                    x: domPosition.x, 
+                    y: domPosition.y,
+                    hasNavigationTooltip
+                  });
+                }
+                
+                // Delay showing the preview to avoid interfering with double-click
+                selectionDelayRef.current = setTimeout(() => {
+                  setSelectedNodeLabel(nodeLabel);
+                  onNodeSelect(nodeLabel);
+                }, 300); // 300ms delay - after potential double-click window
+              } else {
+                // For root nodes or nodes with existing child graphs, clear any existing selection but don't trigger generation preview
+                setSelectedNodeLabel(null);
+                setIsPreviewExpanded(false);
+                setPointerPosition(null);
+              }
             }
           }
         });
@@ -150,11 +235,123 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       // Add node deselection event listener
       if (onNodeDeselect) {
         networkRef.current.on('deselectNode', () => {
+          // Clear any pending selection delay
+          if (selectionDelayRef.current) {
+            clearTimeout(selectionDelayRef.current);
+            selectionDelayRef.current = null;
+          }
+          
           setSelectedNodeLabel(null);
           setIsPreviewExpanded(false);
+          setPointerPosition(null);
           onNodeDeselect();
         });
       }
+
+      // Add click-outside handler to hide generate preview
+      networkRef.current.on('click', (params) => {
+        // If no node is clicked and we have a selected node, clear the selection
+        if (params.nodes.length === 0 && selectedNodeLabel) {
+          // Clear any pending selection delay
+          if (selectionDelayRef.current) {
+            clearTimeout(selectionDelayRef.current);
+            selectionDelayRef.current = null;
+          }
+          
+          setSelectedNodeLabel(null);
+          setIsPreviewExpanded(false);
+          setPointerPosition(null);
+          if (onNodeDeselect) {
+            onNodeDeselect();
+          }
+        }
+      });
+
+      // Add double-click navigation handler
+      networkRef.current.on('doubleClick', (params) => {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          
+          // Clear any pending selection delay immediately on double-click
+          if (selectionDelayRef.current) {
+            clearTimeout(selectionDelayRef.current);
+            selectionDelayRef.current = null;
+          }
+          
+          // Find the node data to determine navigation action
+          const nodeData = nodesDataSetRef.current?.get(nodeId);
+          const originalNode = currentGraphData.nodes.find(n => n.id === nodeId);
+          
+          if (nodeData && originalNode) {
+            if (originalNode.hasChildGraph && onNavigateToChild) {
+              // Clear preview state before navigating to child graph
+              setSelectedNodeLabel(null);
+              setIsPreviewExpanded(false);
+              setPointerPosition(null);
+              onNavigateToChild(nodeId);
+            } else if (originalNode.isRootNode && onNavigateToParent) {
+              // Clear preview state before navigating to parent graph
+              setSelectedNodeLabel(null);
+              setIsPreviewExpanded(false);
+              setPointerPosition(null);
+              onNavigateToParent(originalNode);
+            }
+          }
+        }
+      });
+
+      // Add hover tooltips for navigation nodes
+      networkRef.current.on('hoverNode', (params) => {
+        const nodeId = params.node;
+        const originalNode = currentGraphData.nodes.find(n => n.id === nodeId);
+        
+        if (originalNode && nodesDataSetRef.current) {
+          let tooltipText = originalNode.label;
+          
+          if (originalNode.hasChildGraph) {
+            tooltipText += '\n\n🔗 Double-click to explore sub-graph';
+          } else if (originalNode.isRootNode) {
+            tooltipText += '\n\n↩️ Double-click to return to parent graph';
+          } else if (FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION && !(FEATURE_FLAGS.DISABLE_NESTED_SUBGRAPHS && hasParentGraph)) {
+            tooltipText += '\n\n💡 Click to generate sub-graph';
+          }
+          
+          // Update the node's title attribute for tooltip
+          nodesDataSetRef.current.update({ id: nodeId, title: tooltipText });
+        }
+      });
+
+      // Clear tooltips when not hovering
+      networkRef.current.on('blurNode', (params) => {
+        const nodeId = params.node;
+        const originalNode = currentGraphData.nodes.find(n => n.id === nodeId);
+        
+        if (originalNode && nodesDataSetRef.current) {
+          // Reset to just the label
+          nodesDataSetRef.current.update({ id: nodeId, title: originalNode.label });
+        }
+      });
+
+      // Add hover tooltips for edges
+      networkRef.current.on('hoverEdge', (params) => {
+        const edgeId = params.edge;
+        const originalLabel = originalLabels.get(edgeId);
+        
+        if (originalLabel && edgesDataSetRef.current) {
+          // Show the edge label as tooltip
+          edgesDataSetRef.current.update({ id: edgeId, title: originalLabel });
+        }
+      });
+
+      // Clear edge tooltips when not hovering
+      networkRef.current.on('blurEdge', (params) => {
+        const edgeId = params.edge;
+        
+        if (edgesDataSetRef.current) {
+          // Clear the tooltip
+          edgesDataSetRef.current.update({ id: edgeId, title: undefined });
+        }
+      });
     };
 
     initializeNetwork();
@@ -164,8 +361,12 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       if (networkRef.current) {
         networkRef.current.destroy();
       }
+      // Clear any pending selection delay
+      if (selectionDelayRef.current) {
+        clearTimeout(selectionDelayRef.current);
+      }
     };
-  }, [currentGraphData, isFullscreen, onNodeSelect, onNodeDeselect]); // Include isFullscreen and callback functions in dependencies
+  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured]); // Include isFullscreen and all callback functions in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {
@@ -180,6 +381,15 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
     if (isNewGraph) {
       // Completely rebuild the graph data for a new graph
       currentGraphIdRef.current = graphId;
+      
+      // Clear selection state when navigating to different graph
+      if (selectionDelayRef.current) {
+        clearTimeout(selectionDelayRef.current);
+        selectionDelayRef.current = null;
+      }
+      setSelectedNodeLabel(null);
+      setIsPreviewExpanded(false);
+      setPointerPosition(null);
       
       // Clear existing data
       nodesDataSetRef.current.clear();
@@ -348,16 +558,33 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       <div 
         className={`absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-gray-200 pointer-events-none z-10 max-w-xs`}
       >
-        <div className="text-sm font-medium text-gray-800">{truncatedSubject}</div>
+        <div className="text-sm font-medium text-gray-800">{truncatedTitle}</div>
         <div className="text-xs text-gray-500 mt-0.5">{metadata.model}</div>
       </div>
 
       {/* Node Selection Preview Overlay */}
       {selectedNodeLabel && (
         <div 
-          className={`absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-gray-200 z-20 transition-all duration-300 ${
+          className={`absolute bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-gray-200 z-20 transition-all duration-300 ${
             selectedNodeLabel ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
           } ${isPreviewExpanded ? 'max-w-2xl' : 'max-w-md'}`}
+          style={{
+            // Smart positioning based on pointer location
+            ...(pointerPosition ? {
+              // If click was in top half, position below the click
+              // If click was in bottom half, position above the click
+              // Add extra offset for nodes with navigation tooltips (they're taller)
+              top: pointerPosition.y < 300 ? `${pointerPosition.y + (pointerPosition.hasNavigationTooltip ? 100 : 60)}px` : 'auto',
+              bottom: pointerPosition.y >= 300 ? `${isFullscreenMode ? window.innerHeight - pointerPosition.y + (pointerPosition.hasNavigationTooltip ? 100 : 60) : 600 - pointerPosition.y + (pointerPosition.hasNavigationTooltip ? 100 : 60)}px` : 'auto',
+              left: '50%',
+              transform: 'translateX(-50%)'
+            } : {
+              // Fallback to center positioning
+              top: '1rem',
+              left: '50%',
+              transform: 'translateX(-50%)'
+            })
+          }}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -374,9 +601,9 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 onMouseEnter={handleTextMouseEnter}
                 onMouseLeave={handleTextMouseLeave}
                 onClick={handleTextClick}
-                title={isPreviewExpanded ? '' : `${metadata.subject} → ${selectedNodeLabel}`}
+                title={isPreviewExpanded ? '' : `${selectedNodeLabel} ← ${metadata.title}`}
               >
-                {metadata.subject} → {selectedNodeLabel}
+                {selectedNodeLabel} ← {metadata.title}
               </div>
             </div>
             <button
@@ -399,6 +626,23 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
           </div>
         </div>
       )}
+
+      {/* Navigation Legend - REMOVED FOR SPACE 
+          Future reference for visual indicators:
+          
+          Purple thick border (6px) + large shadow: 
+          - Color: #7C3AED (violet-600)
+          - Nodes with sub-graphs (double-click to navigate to child)
+          - CSS: border-4 border-violet-600, boxShadow: '0 0 8px rgba(124, 58, 237, 0.6)'
+          
+          Green dashed border + shadow:
+          - Color: #059669 (emerald-600) 
+          - Root nodes (double-click to navigate to parent)
+          - CSS: border: '2px dashed #059669', boxShadow: '0 0 6px rgba(5, 150, 105, 0.5)'
+          
+          Regular nodes: Default styling with no special navigation
+          Hover state: Blue highlight (distinct from navigation indicators)
+      */}
 
       {/* Fullscreen toggle button */}
       <button

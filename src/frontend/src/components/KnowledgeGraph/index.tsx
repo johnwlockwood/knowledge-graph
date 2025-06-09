@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useGraphData } from '@/hooks/useGraphData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getGraphTitle } from '@/utils/graphUtils';
-import { INITIAL_DATA } from '@/utils/constants';
+import { INITIAL_DATA, StoredGraph, FEATURE_FLAGS } from '@/utils/constants';
 import { StreamingGraphGenerator } from './StreamingGraphGenerator';
 import { GraphNavigation } from './GraphNavigation';
 import { GraphVisualization } from './GraphVisualization';
@@ -20,7 +20,7 @@ export default function KnowledgeGraph() {
   // Ref to store the streaming reset function and input setter
   const streamingResetRef = useRef<(() => void) | null>(null);
   const setInputSubjectRef = useRef<((subject: string) => void) | null>(null);
-  const generateFromNodeRef = useRef<((subject: string) => Promise<void>) | null>(null);
+  const generateFromNodeRef = useRef<((subject: string, sourceNodeId?: number, sourceNodeLabel?: string) => Promise<void>) | null>(null);
 
   const {
     allGraphs,
@@ -32,7 +32,13 @@ export default function KnowledgeGraph() {
     goToGraphAtIndex,
     addGraph,
     importGraphs,
-    removeGraph
+    removeGraph,
+    // New navigation functions
+    linkGraphs,
+    navigateToChildGraph,
+    navigateToParentGraph,
+    // Layout persistence
+    updateGraphSeed
   } = useGraphData();
 
   // Handle toast notifications
@@ -72,7 +78,7 @@ export default function KnowledgeGraph() {
   };
 
   // Handle generation function registration
-  const handleSetGenerateFromNode = (generateFn: (subject: string) => Promise<void>) => {
+  const handleSetGenerateFromNode = (generateFn: (subject: string, sourceNodeId?: number, sourceNodeLabel?: string) => Promise<void>) => {
     generateFromNodeRef.current = generateFn;
   };
 
@@ -103,7 +109,7 @@ export default function KnowledgeGraph() {
   // Handle node selection from graph
   const handleNodeSelect = useCallback((nodeLabel: string) => {
     if (setInputSubjectRef.current) {
-      const newSubject = `${graphMetadata.subject} -> ${nodeLabel}`;
+      const newSubject = `${graphMetadata.subject} → ${nodeLabel}`;
       setInputSubjectRef.current(newSubject);
     }
   }, [graphMetadata.subject]);
@@ -114,11 +120,36 @@ export default function KnowledgeGraph() {
   }, []);
 
   // Handle generation from selected node
-  const handleGenerateFromNode = useCallback(async (subject: string) => {
+  const handleGenerateFromNode = useCallback(async (
+    subject: string, 
+    sourceNodeId?: number, 
+    sourceNodeLabel?: string
+  ) => {
     if (generateFromNodeRef.current) {
-      await generateFromNodeRef.current(subject);
+      await generateFromNodeRef.current(subject, sourceNodeId, sourceNodeLabel);
     }
   }, []);
+
+  // Enhanced graph generation handler that links parent-child relationships
+  const handleGraphGenerated = useCallback((
+    newGraph: StoredGraph, 
+    parentGraphId?: string, 
+    parentNodeId?: number, 
+    sourceNodeLabel?: string
+  ) => {
+    // Add the new graph first
+    addGraph(newGraph);
+    
+    // Link graphs if parent relationship exists
+    if (parentGraphId && parentNodeId && sourceNodeLabel) {
+      linkGraphs(parentGraphId, parentNodeId, newGraph.id, sourceNodeLabel);
+    }
+  }, [addGraph, linkGraphs]);
+
+  // Handle seed capture for layout persistence
+  const handleSeedCaptured = useCallback((graphId: string, seed: string) => {
+    updateGraphSeed(graphId, seed);
+  }, [updateGraphSeed]);
 
   // Get delete confirmation graph title
   const deleteConfirmGraph = showDeleteConfirm ? allGraphs.find(g => g.id === showDeleteConfirm) : null;
@@ -175,11 +206,12 @@ export default function KnowledgeGraph() {
         
         {/* Graph Generator */}
         <StreamingGraphGenerator
-          onGraphGenerated={addGraph}
+          onGraphGenerated={handleGraphGenerated}
           onToast={handleToast}
           onResetState={handleStreamingResetState}
           onSetInputSubject={handleSetInputSubject}
-          onSetGenerateFromNode={handleSetGenerateFromNode}
+          onSetGenerateFromNode={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleSetGenerateFromNode : undefined}
+          currentGraph={currentGraph}
         />
         
         {/* Graph Display Container */}
@@ -210,9 +242,14 @@ export default function KnowledgeGraph() {
               graphData={currentGraphData} 
               metadata={graphMetadata}
               graphId={currentGraph?.id}
-              onNodeSelect={handleNodeSelect}
+              layoutSeed={currentGraph?.layoutSeed}
+              onNodeSelect={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleNodeSelect : undefined}
               onNodeDeselect={handleNodeDeselect}
-              onGenerateFromNode={handleGenerateFromNode}
+              onGenerateFromNode={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleGenerateFromNode : undefined}
+              onNavigateToChild={navigateToChildGraph}
+              onNavigateToParent={navigateToParentGraph}
+              onSeedCaptured={handleSeedCaptured}
+              hasParentGraph={!!currentGraph?.parentGraphId}
             />
           )}
         </div>
