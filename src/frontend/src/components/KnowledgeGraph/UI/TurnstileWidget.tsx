@@ -43,7 +43,7 @@ export const TurnstileWidget = forwardRef<{ resetWidget?: () => void }, Turnstil
     }, []);
 
     return (
-      <div ref={containerRef} className={`flex justify-center overflow-hidden transition-all duration-300 ${!isVisible ? 'h-0' : ''}`}>
+      <div ref={containerRef} className={`flex justify-center overflow-hidden transition-all duration-300 relative z-[60] ${!isVisible ? 'h-0' : ''}`}>
         <Turnstile
           ref={setTurnstileRef}
           siteKey={siteKey}
