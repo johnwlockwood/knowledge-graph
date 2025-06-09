@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useGraphData } from '@/hooks/useGraphData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getGraphTitle } from '@/utils/graphUtils';
-import { INITIAL_DATA, StoredGraph } from '@/utils/constants';
+import { INITIAL_DATA, StoredGraph, FEATURE_FLAGS } from '@/utils/constants';
 import { StreamingGraphGenerator } from './StreamingGraphGenerator';
 import { GraphNavigation } from './GraphNavigation';
 import { GraphVisualization } from './GraphVisualization';
@@ -210,7 +210,7 @@ export default function KnowledgeGraph() {
           onToast={handleToast}
           onResetState={handleStreamingResetState}
           onSetInputSubject={handleSetInputSubject}
-          onSetGenerateFromNode={handleSetGenerateFromNode}
+          onSetGenerateFromNode={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleSetGenerateFromNode : undefined}
           currentGraph={currentGraph}
         />
         
@@ -243,9 +243,9 @@ export default function KnowledgeGraph() {
               metadata={graphMetadata}
               graphId={currentGraph?.id}
               layoutSeed={currentGraph?.layoutSeed}
-              onNodeSelect={handleNodeSelect}
+              onNodeSelect={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleNodeSelect : undefined}
               onNodeDeselect={handleNodeDeselect}
-              onGenerateFromNode={handleGenerateFromNode}
+              onGenerateFromNode={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleGenerateFromNode : undefined}
               onNavigateToChild={navigateToChildGraph}
               onNavigateToParent={navigateToParentGraph}
               onSeedCaptured={handleSeedCaptured}

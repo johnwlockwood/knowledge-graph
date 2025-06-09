@@ -137,6 +137,11 @@ export const EXAMPLE_GRAPHS: StoredGraph[] = [
   }
 ];
 
+// Feature flags
+export const FEATURE_FLAGS = {
+  ENABLE_SUBGRAPH_GENERATION: process.env.NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION === 'false' ? false : true // Default to true, set NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false to disable
+} as const;
+
 // Local storage keys
 export const STORAGE_KEYS = {
   GRAPHS: 'knowledge-graphs',

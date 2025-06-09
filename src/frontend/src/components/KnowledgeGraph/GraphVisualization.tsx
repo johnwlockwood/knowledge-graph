@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DataSet } from 'vis-data';
 import { Network } from 'vis-network/standalone';
-import { ApiNode, ApiEdge, INITIAL_DATA } from '@/utils/constants';
+import { ApiNode, ApiEdge, INITIAL_DATA, FEATURE_FLAGS } from '@/utils/constants';
 import { mapGraphData, getNetworkOptions, originalLabels, originalColors, truncateLabel } from '@/utils/graphUtils';
 import { FullscreenModal } from './UI/FullscreenModal';
 
@@ -196,8 +196,8 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 clearTimeout(selectionDelayRef.current);
               }
               
-              // Don't show generate preview for root nodes or nodes that already have child graphs
-              if (!originalNode.isRootNode && !originalNode.hasChildGraph) {
+              // Don't show generate preview for root nodes, nodes that already have child graphs, or if feature is disabled
+              if (!originalNode.isRootNode && !originalNode.hasChildGraph && FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION) {
                 // Capture pointer position for smart positioning
                 const domPosition = params.pointer?.DOM;
                 if (domPosition) {
@@ -306,6 +306,8 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
             tooltipText += '\n\n🔗 Double-click to explore sub-graph';
           } else if (originalNode.isRootNode) {
             tooltipText += '\n\n↩️ Double-click to return to parent graph';
+          } else if (FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION) {
+            tooltipText += '\n\n💡 Click to generate sub-graph';
           }
           
           // Update the node's title attribute for tooltip
@@ -358,7 +360,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         clearTimeout(selectionDelayRef.current);
       }
     };
-  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured]); // Include isFullscreen and all callback functions in dependencies
+  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured, selectedNodeLabel]); // Include isFullscreen and all callback functions in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {
