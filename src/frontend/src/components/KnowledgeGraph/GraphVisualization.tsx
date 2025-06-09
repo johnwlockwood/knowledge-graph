@@ -242,6 +242,25 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         });
       }
 
+      // Add click-outside handler to hide generate preview
+      networkRef.current.on('click', (params) => {
+        // If no node is clicked and we have a selected node, clear the selection
+        if (params.nodes.length === 0 && selectedNodeLabel) {
+          // Clear any pending selection delay
+          if (selectionDelayRef.current) {
+            clearTimeout(selectionDelayRef.current);
+            selectionDelayRef.current = null;
+          }
+          
+          setSelectedNodeLabel(null);
+          setIsPreviewExpanded(false);
+          setPointerPosition(null);
+          if (onNodeDeselect) {
+            onNodeDeselect();
+          }
+        }
+      });
+
       // Add double-click navigation handler
       networkRef.current.on('doubleClick', (params) => {
         if (params.nodes.length > 0) {
