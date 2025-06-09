@@ -249,6 +249,7 @@ export default function KnowledgeGraph() {
               onNavigateToChild={navigateToChildGraph}
               onNavigateToParent={navigateToParentGraph}
               onSeedCaptured={handleSeedCaptured}
+              hasParentGraph={!!currentGraph?.parentGraphId}
             />
           )}
         </div>

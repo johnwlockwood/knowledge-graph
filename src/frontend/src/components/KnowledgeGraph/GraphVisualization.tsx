@@ -26,9 +26,10 @@ interface GraphVisualizationProps {
   onNavigateToChild?: (nodeId: number) => void; // Callback to navigate to child graph
   onNavigateToParent?: (rootNode: ApiNode) => void; // Callback to navigate to parent graph
   onSeedCaptured?: (graphId: string, seed: string) => void; // Callback when network seed is captured
+  hasParentGraph?: boolean; // Indicates if this graph has a parent (for nested subgraph control)
 }
 
-export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, layoutSeed, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured }: GraphVisualizationProps) {
+export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, layoutSeed, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured, hasParentGraph = false }: GraphVisualizationProps) {
   const networkRef = useRef<Network | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -196,8 +197,13 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 clearTimeout(selectionDelayRef.current);
               }
               
-              // Don't show generate preview for root nodes, nodes that already have child graphs, or if feature is disabled
-              if (!originalNode.isRootNode && !originalNode.hasChildGraph && FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION) {
+              // Don't show generate preview for root nodes, nodes that already have child graphs, if feature is disabled, or if nested subgraphs are disabled and this graph has a parent
+              const canGenerateSubgraph = !originalNode.isRootNode && 
+                                        !originalNode.hasChildGraph && 
+                                        FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION && 
+                                        !(FEATURE_FLAGS.DISABLE_NESTED_SUBGRAPHS && hasParentGraph);
+              
+              if (canGenerateSubgraph) {
                 // Capture pointer position for smart positioning
                 const domPosition = params.pointer?.DOM;
                 if (domPosition) {
@@ -306,7 +312,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
             tooltipText += '\n\n🔗 Double-click to explore sub-graph';
           } else if (originalNode.isRootNode) {
             tooltipText += '\n\n↩️ Double-click to return to parent graph';
-          } else if (FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION) {
+          } else if (FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION && !(FEATURE_FLAGS.DISABLE_NESTED_SUBGRAPHS && hasParentGraph)) {
             tooltipText += '\n\n💡 Click to generate sub-graph';
           }
           
@@ -360,7 +366,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         clearTimeout(selectionDelayRef.current);
       }
     };
-  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured, selectedNodeLabel]); // Include isFullscreen and all callback functions in dependencies
+  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured, selectedNodeLabel, hasParentGraph]); // Include isFullscreen and all callback functions in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {

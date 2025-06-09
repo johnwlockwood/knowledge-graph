@@ -16,6 +16,112 @@ Before running the application, you need to configure environment variables:
    NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key_here
    ```
 
+## Feature Flags
+
+The application supports several feature flags to control functionality:
+
+### Sub-graph Generation Control
+
+**`NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION`**
+- **Default**: `true` (enabled)
+- **Purpose**: Global control for all sub-graph generation functionality
+- **Usage**: Set to `false` to completely disable sub-graph generation
+
+```env
+# Disable all sub-graph generation
+NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false
+```
+
+**`NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS`**
+- **Default**: `false` (nested sub-graphs allowed)
+- **Purpose**: Prevents creating sub-graphs from graphs that already have a parent
+- **Usage**: Set to `true` to limit graph hierarchy to only one level of nesting
+
+```env
+# Allow only first-level sub-graphs (no nested sub-graphs)
+NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
+```
+
+### Feature Flag Combinations
+
+| ENABLE_SUBGRAPH_GENERATION | DISABLE_NESTED_SUBGRAPHS | Result |
+|----------------------------|--------------------------|---------|
+| `true` (default) | `false` (default) | ✅ Full sub-graph functionality with unlimited nesting |
+| `true` | `true` | ✅ Sub-graphs allowed only from root-level graphs |
+| `false` | `false` | ❌ No sub-graph generation allowed |
+| `false` | `true` | ❌ No sub-graph generation allowed |
+
+### What Gets Disabled
+
+When sub-graph generation is disabled (either globally or for nested graphs):
+- ❌ Generate preview no longer appears when clicking nodes
+- ❌ Tooltip no longer shows "💡 Click to generate sub-graph"
+- ✅ Navigation to existing child graphs still works (double-click)
+- ✅ Navigation to parent graph still works (double-click root nodes)
+- ✅ All other functionality remains unchanged
+
+### Deployment Examples
+
+**Vercel/Netlify**: Set environment variables in deployment settings
+```env
+NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
+```
+
+**Docker**: 
+```dockerfile
+ENV NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
+```
+
+**Local Development**: Add to `.env.local`
+```env
+NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
+```
+
+### Usage Examples
+
+**Full sub-graph functionality** (default behavior):
+```bash
+# No environment variables needed - this is the default
+npm run dev
+npm run build
+```
+
+**Disable all sub-graph generation** (read-only mode):
+```bash
+# For development
+NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false npm run dev
+
+# For production build
+NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false npm run build
+NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false npm start
+```
+
+**Allow only first-level sub-graphs** (prevent deep nesting):
+```bash
+# For development
+NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true npm run dev
+
+# For production build
+NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true npm run build
+NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true npm start
+```
+
+**Combined flags** (both disabled - same as global disable):
+```bash
+# For development
+NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true npm run dev
+
+# For production
+NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true npm run build
+```
+
+**Using .env.local for persistent configuration**:
+```env
+# Add to .env.local file for development
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key_here
+NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
+```
+
 ### Getting Cloudflare Turnstile Keys
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)

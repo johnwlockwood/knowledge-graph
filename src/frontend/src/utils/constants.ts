@@ -139,7 +139,8 @@ export const EXAMPLE_GRAPHS: StoredGraph[] = [
 
 // Feature flags
 export const FEATURE_FLAGS = {
-  ENABLE_SUBGRAPH_GENERATION: process.env.NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION === 'false' ? false : true // Default to true, set NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false to disable
+  ENABLE_SUBGRAPH_GENERATION: process.env.NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION === 'false' ? false : true, // Default to true, set NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false to disable
+  DISABLE_NESTED_SUBGRAPHS: process.env.NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS === 'true' ? true : false // Default to false, set NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true to disable sub-graphs from sub-graphs
 } as const;
 
 // Local storage keys
