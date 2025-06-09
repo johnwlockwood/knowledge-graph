@@ -36,7 +36,9 @@ export default function KnowledgeGraph() {
     // New navigation functions
     linkGraphs,
     navigateToChildGraph,
-    navigateToParentGraph
+    navigateToParentGraph,
+    // Layout persistence
+    updateGraphSeed
   } = useGraphData();
 
   // Handle toast notifications
@@ -144,6 +146,11 @@ export default function KnowledgeGraph() {
     }
   }, [addGraph, linkGraphs]);
 
+  // Handle seed capture for layout persistence
+  const handleSeedCaptured = useCallback((graphId: string, seed: string) => {
+    updateGraphSeed(graphId, seed);
+  }, [updateGraphSeed]);
+
   // Get delete confirmation graph title
   const deleteConfirmGraph = showDeleteConfirm ? allGraphs.find(g => g.id === showDeleteConfirm) : null;
   const deleteConfirmTitle = deleteConfirmGraph ? getGraphTitle(deleteConfirmGraph) : '';
@@ -235,11 +242,13 @@ export default function KnowledgeGraph() {
               graphData={currentGraphData} 
               metadata={graphMetadata}
               graphId={currentGraph?.id}
+              layoutSeed={currentGraph?.layoutSeed}
               onNodeSelect={handleNodeSelect}
               onNodeDeselect={handleNodeDeselect}
               onGenerateFromNode={handleGenerateFromNode}
               onNavigateToChild={navigateToChildGraph}
               onNavigateToParent={navigateToParentGraph}
+              onSeedCaptured={handleSeedCaptured}
             />
           )}
         </div>

@@ -19,11 +19,13 @@ interface GraphVisualizationProps {
   metadata: GraphMetadata;
   isStreaming?: boolean;
   graphId?: string; // Optional graph ID to detect graph changes
+  layoutSeed?: string; // Optional layout seed for consistent positioning
   onNodeSelect?: (nodeLabel: string) => void; // Callback for node selection
   onNodeDeselect?: () => void; // Callback for node deselection
   onGenerateFromNode?: (subject: string, sourceNodeId?: number, sourceNodeLabel?: string) => Promise<void>; // Callback to generate from selected node
   onNavigateToChild?: (nodeId: number) => void; // Callback to navigate to child graph
   onNavigateToParent?: (rootNode: ApiNode) => void; // Callback to navigate to parent graph
+  onSeedCaptured?: (graphId: string, seed: string) => void; // Callback when network seed is captured
 }
 
 export function GraphVisualization({ graphData, metadata, isStreaming = false, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent }: GraphVisualizationProps) {

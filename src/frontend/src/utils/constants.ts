@@ -36,6 +36,9 @@ export interface StoredGraph {
   parentNodeId?: number;         // ID of specific node in parent graph
   sourceNodeLabel?: string;      // Label of node that generated this graph
   childGraphIds?: string[];      // Array of child graph IDs
+  
+  // Layout persistence
+  layoutSeed?: string;           // Network layout seed for consistent positioning
 }
 
 export interface UserPreferences {

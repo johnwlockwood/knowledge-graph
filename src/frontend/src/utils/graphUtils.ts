@@ -125,11 +125,11 @@ export function mapGraphData(
       let shadowSize = 5;
       
       if (node.hasChildGraph) {
-        // Blue outline for nodes with child graphs
-        borderColor = '#4F46E5';
-        borderWidth = 4;
-        shadowColor = '#4F46E5';
-        shadowSize = 8;
+        // Purple outline with double border effect for nodes with child graphs
+        borderColor = '#7C3AED';
+        borderWidth = 6;
+        shadowColor = '#7C3AED';
+        shadowSize = 10;
       } else if (node.isRootNode) {
         // Green dashed outline for root nodes
         borderColor = '#059669';

@@ -193,6 +193,21 @@ export function useGraphData() {
     }
   }, [visibleGraphs]);
 
+  // Update a graph's layout seed
+  const updateGraphSeed = useCallback((graphId: string, seed: string) => {
+    setAllGraphs(prev => {
+      const updated = prev.map(graph => 
+        graph.id === graphId 
+          ? { ...graph, layoutSeed: seed }
+          : graph
+      );
+      
+      // Update localStorage immediately
+      saveToLocalStorage(STORAGE_KEYS.GRAPHS, updated);
+      return updated;
+    });
+  }, []);
+
   // Get current graph
   const currentGraph = visibleGraphs[currentGraphIndex];
 
@@ -211,6 +226,8 @@ export function useGraphData() {
     linkGraphs,
     navigateToChildGraph,
     navigateToParentGraph,
-    goToGraphById
+    goToGraphById,
+    // Layout persistence
+    updateGraphSeed
   };
 }
