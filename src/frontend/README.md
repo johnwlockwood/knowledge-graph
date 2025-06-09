@@ -163,6 +163,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - **Security**: Cloudflare Turnstile integration for spam protection
 - **Responsive Design**: Built with Tailwind CSS v4
 - **Multi-graph Workspace**: Create and manage multiple knowledge graphs
+- **Browser Navigation**: Hash-based navigation with back/forward support and bookmarkable URLs
 
 ## Project Structure
 
