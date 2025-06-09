@@ -127,13 +127,13 @@ export function mapGraphData(
       if (node.hasChildGraph) {
         // Purple outline with double border effect for nodes with child graphs
         borderColor = '#7C3AED';
-        borderWidth = 6;
+        borderWidth = 2;
         shadowColor = '#7C3AED';
         shadowSize = 10;
       } else if (node.isRootNode) {
         // Green dashed outline for root nodes
         borderColor = '#059669';
-        borderWidth = 4;
+        borderWidth = 2;
         borderDashes = [5, 5];
         shadowColor = '#059669';
         shadowSize = 8;
@@ -148,7 +148,9 @@ export function mapGraphData(
           border: borderColor,
           highlight: {
             background: node.color,
-            border: borderColor
+            // For linked nodes, keep the original border color (no extra emphasis)
+            // Regular nodes get the default blue selection border
+            border: (node.hasChildGraph || node.isRootNode) ? borderColor : '#2B7CE9'
           }
         },
         borderWidth: borderWidth,
