@@ -359,20 +359,32 @@ export function validateGraphData(data: unknown): ValidationResult {
         }
       }
 
-      // Create sanitized graph
+      // Create sanitized graph - preserve relationship properties for connected graphs
       const sanitizedGraph: StoredGraph = {
         id: (typeof graph.id === 'string' ? graph.id : generateGraphId()),
         title: (typeof graph.title === 'string' ? graph.title : `Imported Graph ${i + 1}`),
         subject: (typeof graph.subject === 'string' ? graph.subject : 'Imported'),
         createdAt: (typeof graph.createdAt === 'number' ? graph.createdAt : Date.now()),
         model: (typeof graph.model === 'string' ? graph.model : 'unknown'),
+        // Preserve connected graph relationship properties
+        ...(typeof graph.parentGraphId === 'string' && { parentGraphId: graph.parentGraphId }),
+        ...(typeof graph.parentNodeId === 'number' && { parentNodeId: graph.parentNodeId }),
+        ...(typeof graph.sourceNodeLabel === 'string' && { sourceNodeLabel: graph.sourceNodeLabel }),
+        ...(Array.isArray(graph.childGraphIds) && { childGraphIds: graph.childGraphIds }),
+        ...(typeof graph.layoutSeed === 'string' && { layoutSeed: graph.layoutSeed }),
         data: {
           nodes: nodes.map((nodeData) => {
             const node = nodeData as Record<string, unknown>;
             return {
               id: node.id as number,
               label: (typeof node.label === 'string' ? node.label : `Node ${node.id}`),
-              color: (typeof node.color === 'string' ? node.color : '#2D3748')
+              color: (typeof node.color === 'string' ? node.color : '#2D3748'),
+              // Preserve node relationship properties for connected graphs
+              ...(typeof node.hasChildGraph === 'boolean' && { hasChildGraph: node.hasChildGraph }),
+              ...(typeof node.childGraphId === 'string' && { childGraphId: node.childGraphId }),
+              ...(typeof node.isRootNode === 'boolean' && { isRootNode: node.isRootNode }),
+              ...(typeof node.parentGraphId === 'string' && { parentGraphId: node.parentGraphId }),
+              ...(typeof node.parentNodeId === 'number' && { parentNodeId: node.parentNodeId })
             };
           }),
           edges: edges.map((edgeData) => {
@@ -423,8 +435,10 @@ export function parseImportedData(jsonString: string): ValidationResult {
 // Generate unique IDs for imported graphs to avoid conflicts
 export function generateUniqueIds(graphs: StoredGraph[], existingIds: string[]): StoredGraph[] {
   const allIds = new Set(existingIds);
+  const idMapping = new Map<string, string>(); // Track old ID -> new ID mappings
   
-  return graphs.map(graph => {
+  // First pass: generate new IDs and build mapping
+  const graphsWithNewIds = graphs.map(graph => {
     let newId = graph.id;
     let counter = 1;
     
@@ -435,10 +449,50 @@ export function generateUniqueIds(graphs: StoredGraph[], existingIds: string[]):
     }
     
     allIds.add(newId);
+    idMapping.set(graph.id, newId);
     
     return {
       ...graph,
       id: newId
     };
+  });
+  
+  // Second pass: update relationship references to use new IDs
+  return graphsWithNewIds.map(graph => {
+    const updatedGraph = { ...graph };
+    
+    // Update parentGraphId reference if it maps to a new ID
+    if (graph.parentGraphId && idMapping.has(graph.parentGraphId)) {
+      updatedGraph.parentGraphId = idMapping.get(graph.parentGraphId);
+    }
+    
+    // Update childGraphIds references if they map to new IDs
+    if (graph.childGraphIds) {
+      updatedGraph.childGraphIds = graph.childGraphIds.map(childId => 
+        idMapping.get(childId) || childId
+      );
+    }
+    
+    // Update node references to child graph IDs
+    updatedGraph.data = {
+      ...graph.data,
+      nodes: graph.data.nodes.map(node => {
+        const updatedNode = { ...node };
+        
+        // Update childGraphId reference if it maps to a new ID
+        if (node.childGraphId && idMapping.has(node.childGraphId)) {
+          updatedNode.childGraphId = idMapping.get(node.childGraphId);
+        }
+        
+        // Update parentGraphId reference if it maps to a new ID
+        if (node.parentGraphId && idMapping.has(node.parentGraphId)) {
+          updatedNode.parentGraphId = idMapping.get(node.parentGraphId);
+        }
+        
+        return updatedNode;
+      })
+    };
+    
+    return updatedGraph;
   });
 }
