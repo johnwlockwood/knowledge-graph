@@ -159,6 +159,11 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
     try {
       const parentGraphId = currentGraph?.id;
       
+      // Generate hierarchical title: "Parent Title <- Node Label"
+      const hierarchicalTitle = currentGraph && sourceNodeLabel 
+        ? `${currentGraph.title} <- ${sourceNodeLabel}`
+        : undefined;
+      
       await startStreaming(
         nodeSubject, 
         selectedModel, 
@@ -174,13 +179,14 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
         turnstileToken, 
         parentGraphId, 
         sourceNodeId, 
-        sourceNodeLabel
+        sourceNodeLabel,
+        hierarchicalTitle
       );
     } catch (err) {
       onToast('Failed to start streaming. Please try again.', 'error');
       console.error(err);
     }
-  }, [turnstileToken, selectedModel, startStreaming, onGraphGenerated, onToast, resetState, currentGraph?.id]);
+  }, [turnstileToken, selectedModel, startStreaming, onGraphGenerated, onToast, resetState, currentGraph]);
 
   // Expose generateFromNode function to parent component
   useEffect(() => {

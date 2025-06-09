@@ -199,8 +199,8 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 clearTimeout(selectionDelayRef.current);
               }
               
-              // Don't show generate preview for root nodes (they're for navigation back to parent)
-              if (!originalNode.isRootNode) {
+              // Don't show generate preview for root nodes or nodes that already have child graphs
+              if (!originalNode.isRootNode && !originalNode.hasChildGraph) {
                 // Capture pointer position for smart positioning
                 const domPosition = params.pointer?.DOM;
                 if (domPosition) {
@@ -219,7 +219,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                   onNodeSelect(nodeLabel);
                 }, 300); // 300ms delay - after potential double-click window
               } else {
-                // For root nodes, clear any existing selection but don't trigger generation preview
+                // For root nodes or nodes with existing child graphs, clear any existing selection but don't trigger generation preview
                 setSelectedNodeLabel(null);
                 setIsPreviewExpanded(false);
                 setPointerPosition(null);
