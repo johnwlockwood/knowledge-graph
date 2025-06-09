@@ -109,7 +109,7 @@ export default function KnowledgeGraph() {
   // Handle node selection from graph
   const handleNodeSelect = useCallback((nodeLabel: string) => {
     if (setInputSubjectRef.current) {
-      const newSubject = `${graphMetadata.subject} -> ${nodeLabel}`;
+      const newSubject = `${graphMetadata.subject} → ${nodeLabel}`;
       setInputSubjectRef.current(newSubject);
     }
   }, [graphMetadata.subject]);

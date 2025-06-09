@@ -245,9 +245,21 @@ export function linkChildToParent(
     childGraphIds: [...(parentGraph.childGraphIds || []), childGraph.id]
   };
   
-  // Mark root node in child graph (assume first node is root)
+  // Find the node that was clicked to generate this sub-graph (sourceNodeLabel)
+  // This node should be marked as the navigation back to the parent graph
+  let parentNavigationNodeIndex = childGraph.data.nodes.findIndex(node => 
+    node.label === sourceNodeLabel
+  );
+  
+  // If no matching node found, use the first node as fallback
+  if (parentNavigationNodeIndex === -1) {
+    parentNavigationNodeIndex = 0;
+  }
+  
+  // Mark the source node for parent navigation
+  // This node represents what was clicked in the parent graph to generate this sub-graph
   const rootNodeUpdated = childGraph.data.nodes.map((node, index) => 
-    index === 0 
+    index === parentNavigationNodeIndex
       ? { 
           ...node, 
           isRootNode: true, 
@@ -291,7 +303,8 @@ export function updateNodeWithChild(
 }
 
 /**
- * Marks the root node in a child graph with parent relationship data
+ * Marks the appropriate node in a child graph with parent relationship data
+ * Uses smart selection: prefers node matching nodeLabel, falls back to first node
  */
 export function markRootNode(
   graph: StoredGraph, 
@@ -299,8 +312,20 @@ export function markRootNode(
   parentGraphId: string, 
   parentNodeId: number
 ): StoredGraph {
+  // Find the best node to serve as the parent navigation node
+  // First priority: Find a node that matches the parent node label
+  // Fallback: Use the first node (root node)
+  let parentNavigationNodeIndex = graph.data.nodes.findIndex(node => 
+    node.label === nodeLabel
+  );
+  
+  // If no matching node found, use the first node as fallback
+  if (parentNavigationNodeIndex === -1) {
+    parentNavigationNodeIndex = 0;
+  }
+  
   const updatedNodes = graph.data.nodes.map((node, index) => 
-    index === 0 // Assume first node is root
+    index === parentNavigationNodeIndex
       ? { 
           ...node, 
           isRootNode: true, 

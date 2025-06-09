@@ -64,7 +64,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
     const selectedNode = currentGraphData.nodes.find(n => n.label === selectedNodeLabel);
     if (!selectedNode) return;
     
-    const generationSubject = `${metadata.title} -> ${selectedNodeLabel}`;
+    const generationSubject = `${metadata.title} → ${selectedNodeLabel}`;
     setIsGeneratingFromNode(true);
     
     try {
@@ -572,7 +572,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 onMouseEnter={handleTextMouseEnter}
                 onMouseLeave={handleTextMouseLeave}
                 onClick={handleTextClick}
-                title={isPreviewExpanded ? '' : `${metadata.title} → ${selectedNodeLabel}`}
+                title={isPreviewExpanded ? '' : `${selectedNodeLabel} ← ${metadata.title}`}
               >
                 {metadata.title} → {selectedNodeLabel}
               </div>

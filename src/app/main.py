@@ -203,12 +203,12 @@ async def generate_knowledge_graph(
 
 
 async def generate_graph_stream_response(
-    subject: str, 
-    model: str, 
-    parent_graph_id: str = None, 
-    parent_node_id: int = None, 
+    subject: str,
+    model: str,
+    parent_graph_id: str = None,
+    parent_node_id: int = None,
     source_node_label: str = None,
-    title: str = None
+    title: str = None,
 ):
     """Generate knowledge graph entities based on the subject using
     the specified model."""
@@ -220,10 +220,10 @@ async def generate_graph_stream_response(
             "subject": subject,
             "model": model,
             "message": "Streaming knowledge graph entities",
-            "parentGraphId": parent_graph_id,      # Parent graph ID
-            "parentNodeId": parent_node_id,        # Parent node ID
+            "parentGraphId": parent_graph_id,  # Parent graph ID
+            "parentNodeId": parent_node_id,  # Parent node ID
             "sourceNodeLabel": source_node_label,  # Source node label
-            "title": title,                        # Graph title for hierarchy
+            "title": title,  # Graph title for hierarchy
         },
     }
     yield (json.dumps(metadata) + "\n")
@@ -263,10 +263,10 @@ class StreamingGraphRequest(BaseModel):
         | Literal["gpt-4o-2024-08-06"]
     )
     turnstile_token: str | None = None
-    parent_graph_id: str | None = None    # Parent graph ID
-    parent_node_id: int | None = None     # Parent node ID
+    parent_graph_id: str | None = None  # Parent graph ID
+    parent_node_id: int | None = None  # Parent node ID
     source_node_label: str | None = None  # Source node label
-    title: str | None = None              # Graph title for hierarchy
+    title: str | None = None  # Graph title for hierarchy
 
 
 @app.get("/")
@@ -329,12 +329,12 @@ async def stream_generate_knowledge_graph(
 
     return StreamingResponse(
         generate_graph_stream_response(
-            request.subject, 
-            request.model, 
-            request.parent_graph_id, 
-            request.parent_node_id, 
+            request.subject,
+            request.model,
+            request.parent_graph_id,
+            request.parent_node_id,
             request.source_node_label,
-            request.title
+            request.title,
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache"},

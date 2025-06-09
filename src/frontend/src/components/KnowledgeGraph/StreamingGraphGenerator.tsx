@@ -159,9 +159,10 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
     try {
       const parentGraphId = currentGraph?.id;
       
-      // Generate hierarchical title: "Node Label <- Parent Title "
+      // Generate hierarchical title: "Selected Node <- Immediate Parent"
+      // Extract just the immediate parent title (first part before any existing arrows)
       const hierarchicalTitle = currentGraph && sourceNodeLabel 
-        ? `${sourceNodeLabel} <- ${currentGraph.title}`
+        ? `${sourceNodeLabel} ← ${currentGraph.title.split(' ← ')[0]}`
         : undefined;
       
       await startStreaming(
