@@ -366,7 +366,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         clearTimeout(selectionDelayRef.current);
       }
     };
-  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured, selectedNodeLabel, hasParentGraph]); // Include isFullscreen and all callback functions in dependencies
+  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured]); // Include isFullscreen and all callback functions in dependencies
 
   // Handle graph changes and incremental updates
   useEffect(() => {
