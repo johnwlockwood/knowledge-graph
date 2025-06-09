@@ -137,11 +137,27 @@ export const EXAMPLE_GRAPHS: StoredGraph[] = [
   }
 ];
 
-// Feature flags
+// Feature flags with debug logging
+const debugEnvVars = () => {
+  console.log('=== Feature Flag Environment Variables ===');
+  console.log('NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION:', process.env.NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION);
+  console.log('NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS:', process.env.NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS);
+  console.log('Raw values type check:');
+  console.log('  typeof ENABLE_SUBGRAPH_GENERATION:', typeof process.env.NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION);
+  console.log('  typeof DISABLE_NESTED_SUBGRAPHS:', typeof process.env.NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS);
+};
+
+debugEnvVars();
+
 export const FEATURE_FLAGS = {
   ENABLE_SUBGRAPH_GENERATION: process.env.NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION !== 'false', // Default to true, set NEXT_PUBLIC_ENABLE_SUBGRAPH_GENERATION=false to disable
   DISABLE_NESTED_SUBGRAPHS: process.env.NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS === 'true' // Default to false, set NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true to disable sub-graphs from sub-graphs
 } as const;
+
+console.log('=== Computed Feature Flags ===');
+console.log('ENABLE_SUBGRAPH_GENERATION:', FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION);
+console.log('DISABLE_NESTED_SUBGRAPHS:', FEATURE_FLAGS.DISABLE_NESTED_SUBGRAPHS);
+console.log('==========================================');
 
 // Local storage keys
 export const STORAGE_KEYS = {
