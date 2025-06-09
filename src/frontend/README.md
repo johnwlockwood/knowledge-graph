@@ -78,6 +78,28 @@ ENV NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
 NEXT_PUBLIC_DISABLE_NESTED_SUBGRAPHS=true
 ```
 
+### Backend Model Configuration Examples
+
+**Docker Compose**:
+```yaml
+services:
+  backend:
+    environment:
+      - AVAILABLE_MODELS=gpt-4o-mini-2024-07-18,o4-mini-2025-04-16
+```
+
+**Kubernetes**:
+```yaml
+env:
+  - name: AVAILABLE_MODELS
+    value: "gpt-4o-mini-2024-07-18,o3-2025-04-16"
+```
+
+**Heroku/Railway/etc**:
+```bash
+AVAILABLE_MODELS=gpt-4o-mini-2024-07-18,gpt-4.1-2025-04-14
+```
+
 ### Usage Examples
 
 **Full sub-graph functionality** (default behavior):
@@ -143,6 +165,38 @@ For development/testing, you can use the test key: `1x00000000000000000000AA`
 5. The analytics script will only be loaded if the token is provided
 
 **Note**: Web Analytics is optional. If `NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN` is not set, no tracking script will be loaded.
+
+## Backend Configuration
+
+### AI Model Configuration
+
+Configure which AI models are available in each environment using the `AVAILABLE_MODELS` environment variable on the backend:
+
+```bash
+# Default: All models available (no environment variable)
+
+# Production: Limit to cost-effective models
+AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o4-mini-2025-04-16"
+
+# Development: Include experimental models
+AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o3-2025-04-16,gpt-4.1-2025-04-14"
+
+# Testing: Single model for consistency
+AVAILABLE_MODELS="gpt-4o-mini-2024-07-18"
+```
+
+**Available Models:**
+- `gpt-4o-mini-2024-07-18` - Fast and efficient for most knowledge graphs
+- `gpt-4.1-mini-2025-04-14` - Enhanced reasoning capabilities
+- `o4-mini-2025-04-16` - Latest model with improved accuracy
+- `o3-2025-04-16` - Advanced reasoning and problem-solving model
+- `gpt-4.1-2025-04-14` - Flagship GPT model for complex tasks
+- `gpt-4o-2024-08-06` - Fast, intelligent, flexible GPT model
+
+**Model Selection Behavior:**
+- Frontend automatically fetches available models from `/api/available-models`
+- If selected model becomes unavailable, automatically switches to first available
+- Invalid model configurations fall back to all models with warning logs
 
 ## Getting Started
 

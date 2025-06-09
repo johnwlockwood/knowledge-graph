@@ -19,7 +19,6 @@ load_dotenv()
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
 TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY")
 
-
 # Configure package-level logger
 logger = logging.getLogger("app")  # Parent logger for "app" package
 logger.setLevel(logging.DEBUG)
@@ -36,6 +35,43 @@ logger.debug("Application starting up")
 module_logger = logging.getLogger(__name__)  # __name__ = "app.main"
 
 results = {}  # In-memory storage (use Redis in production)
+
+# Available models configuration
+ALL_MODELS = [
+    "gpt-4o-mini-2024-07-18",
+    "gpt-4.1-mini-2025-04-14",
+    "o4-mini-2025-04-16",
+    "o3-2025-04-16",
+    "gpt-4.1-2025-04-14",
+    "gpt-4o-2024-08-06",
+]
+
+# Get available models from environment variable or use all models as default
+AVAILABLE_MODELS_ENV = os.getenv("AVAILABLE_MODELS", "")
+if AVAILABLE_MODELS_ENV:
+    # Parse comma-separated list of models
+    AVAILABLE_MODELS = [
+        model.strip()
+        for model in AVAILABLE_MODELS_ENV.split(",")
+        if model.strip() in ALL_MODELS
+    ]
+    if not AVAILABLE_MODELS:
+        # If no valid models found, use all models
+        AVAILABLE_MODELS = ALL_MODELS
+        module_logger.warning(
+            f"No valid models found in AVAILABLE_MODELS "
+            f"environment variable: {AVAILABLE_MODELS_ENV}. Using all models."
+        )
+    else:
+        module_logger.info(f"Using configured models: {AVAILABLE_MODELS}")
+else:
+    # No environment variable set, use all models
+    AVAILABLE_MODELS = ALL_MODELS
+    module_logger.info(
+        f"No AVAILABLE_MODELS environment variable set. "
+        f"Using all models: {AVAILABLE_MODELS}"
+    )
+
 
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = int(
@@ -168,17 +204,6 @@ class UsersRequest(BaseModel):
     number_of_users: int = 10
 
 
-MODELS = [
-    "gpt-4o-mini-2024-07-18",
-    "gpt-4.1-mini-2025-04-14",
-    "gpt-3.5-turbo-0125",
-    "gpt-3.5-turbo-16k-0613",
-    "o4-mini-2025-04-16",
-    "gpt-4.1-2025-04-14",
-    "gpt-4o-2024-08-06",
-]
-
-
 class ModelRequest(BaseModel):
     model: (
         Literal["gpt-4o-mini-2024-07-18"]
@@ -259,6 +284,7 @@ class StreamingGraphRequest(BaseModel):
         Literal["gpt-4o-mini-2024-07-18"]
         | Literal["gpt-4.1-mini-2025-04-14"]
         | Literal["o4-mini-2025-04-16"]
+        | Literal["o3-2025-04-16"]
         | Literal["gpt-4.1-2025-04-14"]
         | Literal["gpt-4o-2024-08-06"]
     )
@@ -272,6 +298,12 @@ class StreamingGraphRequest(BaseModel):
 @app.get("/")
 async def home():
     return {"data": "hello world"}
+
+
+@app.get("/api/available-models")
+async def get_available_models():
+    """Return the list of available models for this environment."""
+    return {"models": AVAILABLE_MODELS}
 
 
 @app.get("/api/rate-limit-test")
@@ -301,6 +333,18 @@ async def stream_generate_knowledge_graph(
     the specified model.
     This endpoint streams the graph entities as they are generated.
     """
+    # Validate that the requested model is available in this environment
+    if request.model not in AVAILABLE_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Model not available",
+                "message": f"Model '{request.model}' is not available in this "
+                f"environment. Available models: {AVAILABLE_MODELS}",
+                "available_models": AVAILABLE_MODELS,
+            },
+        )
+
     # Verify Turnstile token if provided
     if request.turnstile_token:
         client_ip = get_client_ip(http_request)

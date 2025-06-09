@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
         source: '/api/stream-generate-graph',
         destination: `${apiBaseUrl}/api/stream-generate-graph`,
       },
+      {
+        source: '/api/available-models',
+        destination: `${apiBaseUrl}/api/available-models`,
+      },
     ];
   },
   async headers() {
