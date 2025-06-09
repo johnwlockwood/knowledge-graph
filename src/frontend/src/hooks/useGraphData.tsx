@@ -156,44 +156,21 @@ export function useGraphData() {
     childGraphId: string, 
     sourceNodeLabel: string
   ) => {
-    setAllGraphs(prevGraphs => {
-      const parentGraph = prevGraphs.find(g => g.id === parentGraphId);
-      const childGraph = prevGraphs.find(g => g.id === childGraphId);
-      
-      if (!parentGraph || !childGraph) return prevGraphs;
-      
-      const { updatedParent, updatedChild } = linkChildToParent(
-        parentGraph, 
-        childGraph, 
-        parentNodeId, 
-        sourceNodeLabel
-      );
-      
-      return prevGraphs.map(g => 
-        g.id === parentGraphId ? updatedParent :
-        g.id === childGraphId ? updatedChild : g
-      );
-    });
+    setAllGraphs(prevGraphs => updateGraphsWithLink(
+      prevGraphs, 
+      parentGraphId, 
+      childGraphId, 
+      parentNodeId, 
+      sourceNodeLabel
+    ));
 
-    // Also update visibleGraphs
-    setVisibleGraphs(prevVisibleGraphs => {
-      const parentGraph = prevVisibleGraphs.find(g => g.id === parentGraphId);
-      const childGraph = prevVisibleGraphs.find(g => g.id === childGraphId);
-      
-      if (!parentGraph || !childGraph) return prevVisibleGraphs;
-      
-      const { updatedParent, updatedChild } = linkChildToParent(
-        parentGraph, 
-        childGraph, 
-        parentNodeId, 
-        sourceNodeLabel
-      );
-      
-      return prevVisibleGraphs.map(g => 
-        g.id === parentGraphId ? updatedParent :
-        g.id === childGraphId ? updatedChild : g
-      );
-    });
+    setVisibleGraphs(prevVisibleGraphs => updateGraphsWithLink(
+      prevVisibleGraphs, 
+      parentGraphId, 
+      childGraphId, 
+      parentNodeId, 
+      sourceNodeLabel
+    ));
   }, []);
 
   // Navigate to child graph from a specific node
