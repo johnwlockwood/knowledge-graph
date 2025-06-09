@@ -366,7 +366,8 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
         clearTimeout(selectionDelayRef.current);
       }
     };
-  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured]); // Include isFullscreen and all callback functions in dependencies
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentGraphData, isFullscreen, layoutSeed, graphId, onNodeSelect, onNodeDeselect, onGenerateFromNode, onNavigateToChild, onNavigateToParent, onSeedCaptured]); // Include isFullscreen and all callback functions in dependencies. hasParentGraph and selectedNodeLabel intentionally excluded to prevent unnecessary reinitializations
 
   // Handle graph changes and incremental updates
   useEffect(() => {

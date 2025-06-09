@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
 import { StoredGraph, UserPreferences, EXAMPLE_GRAPHS, STORAGE_KEYS, ApiNode } from '../utils/constants';
-import { getGraphTitle, linkChildToParent } from '../utils/graphUtils';
+import { getGraphTitle } from '../utils/graphUtils';
 import { loadFromLocalStorage, saveToLocalStorage } from './useLocalStorage';
 
 export function useGraphData() {
@@ -149,6 +149,71 @@ export function useGraphData() {
 
   // === New Navigation Functions ===
 
+  // Helper function to update graphs with parent-child links
+  const updateGraphsWithLink = useCallback((
+    graphs: StoredGraph[],
+    parentGraphId: string,
+    childGraphId: string,
+    parentNodeId: number,
+    sourceNodeLabel: string
+  ): StoredGraph[] => {
+    const parentGraph = graphs.find(g => g.id === parentGraphId);
+    const childGraph = graphs.find(g => g.id === childGraphId);
+    
+    if (!parentGraph || !childGraph) return graphs;
+    
+    // Update parent graph: add child reference and mark source node
+    const updatedParentNodes = parentGraph.data.nodes.map(node => {
+      if (node.id === parentNodeId) {
+        return {
+          ...node,
+          hasChildGraph: true,
+          childGraphId: childGraphId
+        };
+      }
+      return node;
+    });
+
+    const updatedParent: StoredGraph = {
+      ...parentGraph,
+      childGraphIds: [...(parentGraph.childGraphIds || []), childGraphId].filter((id, index, arr) => arr.indexOf(id) === index),
+      data: {
+        ...parentGraph.data,
+        nodes: updatedParentNodes
+      }
+    };
+
+    // Update child graph: add parent reference and mark root node
+    const updatedChildNodes = childGraph.data.nodes.map((node, index) => {
+      if (index === 0) { // First node becomes root node
+        return {
+          ...node,
+          isRootNode: true,
+          parentGraphId: parentGraphId,
+          parentNodeId: parentNodeId
+        };
+      }
+      return node;
+    });
+
+    const updatedChild: StoredGraph = {
+      ...childGraph,
+      parentGraphId: parentGraphId,
+      parentNodeId: parentNodeId,
+      sourceNodeLabel: sourceNodeLabel,
+      data: {
+        ...childGraph.data,
+        nodes: updatedChildNodes
+      }
+    };
+
+    // Return updated graph array
+    return graphs.map(g => 
+      g.id === parentGraphId ? updatedParent :
+      g.id === childGraphId ? updatedChild : g
+    );
+  }, []);
+
   // Link graphs with parent-child relationship
   const linkGraphs = useCallback((
     parentGraphId: string, 
@@ -171,7 +236,7 @@ export function useGraphData() {
       parentNodeId, 
       sourceNodeLabel
     ));
-  }, []);
+  }, [updateGraphsWithLink]);
 
   // Navigate to child graph from a specific node
   const navigateToChildGraph = useCallback((nodeId: number) => {
