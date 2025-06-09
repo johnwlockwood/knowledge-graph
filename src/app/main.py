@@ -207,7 +207,8 @@ async def generate_graph_stream_response(
     model: str, 
     parent_graph_id: str = None, 
     parent_node_id: int = None, 
-    source_node_label: str = None
+    source_node_label: str = None,
+    title: str = None
 ):
     """Generate knowledge graph entities based on the subject using
     the specified model."""
@@ -222,6 +223,7 @@ async def generate_graph_stream_response(
             "parentGraphId": parent_graph_id,      # Parent graph ID
             "parentNodeId": parent_node_id,        # Parent node ID
             "sourceNodeLabel": source_node_label,  # Source node label
+            "title": title,                        # Graph title for hierarchy
         },
     }
     yield (json.dumps(metadata) + "\n")
@@ -264,6 +266,7 @@ class StreamingGraphRequest(BaseModel):
     parent_graph_id: str | None = None    # Parent graph ID
     parent_node_id: int | None = None     # Parent node ID
     source_node_label: str | None = None  # Source node label
+    title: str | None = None              # Graph title for hierarchy
 
 
 @app.get("/")
@@ -330,7 +333,8 @@ async def stream_generate_knowledge_graph(
             request.model, 
             request.parent_graph_id, 
             request.parent_node_id, 
-            request.source_node_label
+            request.source_node_label,
+            request.title
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache"},

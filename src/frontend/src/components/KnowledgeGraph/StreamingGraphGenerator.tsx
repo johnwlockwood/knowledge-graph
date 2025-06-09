@@ -159,9 +159,9 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
     try {
       const parentGraphId = currentGraph?.id;
       
-      // Generate hierarchical title: "Parent Title <- Node Label"
+      // Generate hierarchical title: "Node Label <- Parent Title "
       const hierarchicalTitle = currentGraph && sourceNodeLabel 
-        ? `${currentGraph.title} <- ${sourceNodeLabel}`
+        ? `${sourceNodeLabel} <- ${currentGraph.title}`
         : undefined;
       
       await startStreaming(

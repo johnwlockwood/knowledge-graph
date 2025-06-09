@@ -46,7 +46,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
   const selectionDelayRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentGraphData = graphData || INITIAL_DATA;
-  const truncatedSubject = truncateLabel(metadata.subject, 20);
+  const truncatedTitle = truncateLabel(metadata.title, 20);
 
   // Detect touch device on mount
   useEffect(() => {
@@ -64,7 +64,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
     const selectedNode = currentGraphData.nodes.find(n => n.label === selectedNodeLabel);
     if (!selectedNode) return;
     
-    const generationSubject = `${metadata.subject} -> ${selectedNodeLabel}`;
+    const generationSubject = `${metadata.title} -> ${selectedNodeLabel}`;
     setIsGeneratingFromNode(true);
     
     try {
@@ -534,7 +534,7 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
       <div 
         className={`absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-gray-200 pointer-events-none z-10 max-w-xs`}
       >
-        <div className="text-sm font-medium text-gray-800">{truncatedSubject}</div>
+        <div className="text-sm font-medium text-gray-800">{truncatedTitle}</div>
         <div className="text-xs text-gray-500 mt-0.5">{metadata.model}</div>
       </div>
 
@@ -577,9 +577,9 @@ export function GraphVisualization({ graphData, metadata, isStreaming = false, g
                 onMouseEnter={handleTextMouseEnter}
                 onMouseLeave={handleTextMouseLeave}
                 onClick={handleTextClick}
-                title={isPreviewExpanded ? '' : `${metadata.subject} → ${selectedNodeLabel}`}
+                title={isPreviewExpanded ? '' : `${metadata.title} → ${selectedNodeLabel}`}
               >
-                {metadata.subject} → {selectedNodeLabel}
+                {metadata.title} → {selectedNodeLabel}
               </div>
             </div>
             <button
