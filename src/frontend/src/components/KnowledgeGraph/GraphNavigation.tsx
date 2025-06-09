@@ -82,14 +82,8 @@ export function GraphNavigation({
       </div>
 
       {/* Collapsible Graph Timeline */}
-      <details className="mb-3 group">
-        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1">
-          <span>Show graphs ({visibleGraphs.length})</span>
-          <svg className="w-3 h-3 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </summary>
-        <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+      <div className="mb-3 group">
+        <div className="pl-3 pr-3 bg-gray-50 rounded-lg">
           <div className="relative">
             <div 
               ref={scrollContainerRef}
@@ -135,7 +129,7 @@ export function GraphNavigation({
             Use ← → keys to navigate • Delete key removes current graph
           </div>
         </div>
-      </details>
+      </div>
     </>
   );
 }
