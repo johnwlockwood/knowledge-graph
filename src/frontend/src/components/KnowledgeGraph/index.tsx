@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useGraphData } from '@/hooks/useGraphData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useBrowserNavigation } from '@/hooks/useBrowserNavigation';
 import { getGraphTitle } from '@/utils/graphUtils';
 import { INITIAL_DATA, StoredGraph, FEATURE_FLAGS } from '@/utils/constants';
 import { StreamingGraphGenerator } from './StreamingGraphGenerator';
@@ -27,19 +28,22 @@ export default function KnowledgeGraph() {
     visibleGraphs,
     currentGraph,
     currentGraphIndex,
-    goToPreviousGraph,
-    goToNextGraph,
     goToGraphAtIndex,
     addGraph,
     importGraphs,
     removeGraph,
     // New navigation functions
     linkGraphs,
-    navigateToChildGraph,
-    navigateToParentGraph,
     // Layout persistence
     updateGraphSeed
   } = useGraphData();
+
+  // Browser navigation integration
+  const { navigateToGraph } = useBrowserNavigation({
+    visibleGraphs,
+    currentGraphIndex,
+    onNavigateToGraph: goToGraphAtIndex
+  });
 
   // Handle toast notifications
   const handleToast = (message: string, type: 'success' | 'error') => {
@@ -83,10 +87,23 @@ export default function KnowledgeGraph() {
   };
 
 
+  // Enhanced navigation functions that support browser history
+  const handlePreviousGraph = useCallback(() => {
+    if (currentGraphIndex > 0) {
+      navigateToGraph(currentGraphIndex - 1);
+    }
+  }, [currentGraphIndex, navigateToGraph]);
+
+  const handleNextGraph = useCallback(() => {
+    if (currentGraphIndex < visibleGraphs.length - 1) {
+      navigateToGraph(currentGraphIndex + 1);
+    }
+  }, [currentGraphIndex, visibleGraphs.length, navigateToGraph]);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    onPrevious: goToPreviousGraph,
-    onNext: goToNextGraph,
+    onPrevious: handlePreviousGraph,
+    onNext: handleNextGraph,
     onDelete: currentGraph && visibleGraphs.length > 0 ? () => handleDeleteRequest(currentGraph.id) : undefined
   });
 
@@ -220,9 +237,9 @@ export default function KnowledgeGraph() {
           <GraphNavigation
             visibleGraphs={visibleGraphs}
             currentGraphIndex={currentGraphIndex}
-            onPrevious={goToPreviousGraph}
-            onNext={goToNextGraph}
-            onGoToIndex={goToGraphAtIndex}
+            onPrevious={handlePreviousGraph}
+            onNext={handleNextGraph}
+            onGoToIndex={navigateToGraph}
             onRequestDelete={handleDeleteRequest}
           />
 
@@ -246,8 +263,24 @@ export default function KnowledgeGraph() {
               onNodeSelect={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleNodeSelect : undefined}
               onNodeDeselect={handleNodeDeselect}
               onGenerateFromNode={FEATURE_FLAGS.ENABLE_SUBGRAPH_GENERATION ? handleGenerateFromNode : undefined}
-              onNavigateToChild={navigateToChildGraph}
-              onNavigateToParent={navigateToParentGraph}
+              onNavigateToChild={(nodeId: number) => {
+                const currentGraph = visibleGraphs[currentGraphIndex];
+                const currentNode = currentGraph?.data.nodes.find(n => n.id === nodeId);
+                if (currentNode?.childGraphId) {
+                  const childGraphIndex = visibleGraphs.findIndex(g => g.id === currentNode.childGraphId);
+                  if (childGraphIndex !== -1) {
+                    navigateToGraph(childGraphIndex);
+                  }
+                }
+              }}
+              onNavigateToParent={(rootNode) => {
+                if (rootNode.parentGraphId) {
+                  const parentGraphIndex = visibleGraphs.findIndex(g => g.id === rootNode.parentGraphId);
+                  if (parentGraphIndex !== -1) {
+                    navigateToGraph(parentGraphIndex);
+                  }
+                }
+              }}
               onSeedCaptured={handleSeedCaptured}
               hasParentGraph={!!currentGraph?.parentGraphId}
             />

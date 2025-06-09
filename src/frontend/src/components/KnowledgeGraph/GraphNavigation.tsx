@@ -126,7 +126,7 @@ export function GraphNavigation({
             </div>
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            Use ← → keys to navigate • Delete key removes current graph
+            Use ← → keys to navigate • Cmd+← → for browser history • Delete key removes current graph
           </div>
         </div>
       </div>
