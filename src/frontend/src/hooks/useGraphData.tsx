@@ -9,39 +9,6 @@ export function useGraphData() {
   const [visibleGraphs, setVisibleGraphs] = useState<StoredGraph[]>([]);
   const [currentGraphIndex, setCurrentGraphIndex] = useState(0);
 
-  // Initialize graphs from localStorage
-  useEffect(() => {
-    const savedGraphs = loadFromLocalStorage<StoredGraph[]>(STORAGE_KEYS.GRAPHS, []);
-    const preferences = loadFromLocalStorage<UserPreferences>(STORAGE_KEYS.PREFERENCES, { hiddenGraphIds: [] });
-    
-    // Merge saved graphs with examples, avoiding duplicates
-    const existingIds = new Set(savedGraphs.map(g => g.id));
-    const exampleGraphsToAdd = EXAMPLE_GRAPHS.filter(g => !existingIds.has(g.id));
-    const allGraphsData = [...savedGraphs, ...exampleGraphsToAdd];
-    
-    // Filter out hidden graphs
-    const visibleGraphsData = allGraphsData.filter(g => !preferences.hiddenGraphIds.includes(g.id));
-    
-    setAllGraphs(allGraphsData);
-    setVisibleGraphs(visibleGraphsData);
-    
-    // Set initial graph from localStorage or default to latest
-    if (visibleGraphsData.length > 0) {
-      const savedIndex = loadFromLocalStorage<number>(STORAGE_KEYS.CURRENT_GRAPH_INDEX, -1);
-      
-      if (savedIndex >= 0 && savedIndex < visibleGraphsData.length) {
-        // Use saved index if valid
-        setCurrentGraphIndex(savedIndex);
-      } else {
-        // Fallback to latest graph by createdAt timestamp
-        const latestGraphIndex = visibleGraphsData.reduce((latestIndex, graph, index) => {
-          return graph.createdAt > visibleGraphsData[latestIndex].createdAt ? index : latestIndex;
-        }, 0);
-        setCurrentGraphIndex(latestGraphIndex);
-      }
-    }
-  }, []);
-
   // Save graphs to localStorage whenever allGraphs changes
   useEffect(() => {
     if (allGraphs.length > 0) {
@@ -103,16 +70,82 @@ export function useGraphData() {
     
     saveToLocalStorage(STORAGE_KEYS.PREFERENCES, updatedPreferences);
     
+    const removedGraph = allGraphs.find(g => g.id === graphId);
+    
+    // Unlink relationships when removing a graph
+    const updatedAllGraphs = allGraphs.map(graph => {
+      // If this graph has the removed graph as a child, remove the child reference
+      if (graph.childGraphIds?.includes(graphId)) {
+        const updatedChildGraphIds = graph.childGraphIds.filter(id => id !== graphId);
+        const updatedNodes = graph.data.nodes.map(node => {
+          // Remove hasChildGraph flag from nodes that reference the removed graph
+          if (node.childGraphId === graphId) {
+            return {
+              id: node.id,
+              label: node.label,
+              color: node.color,
+              ...(node.isRootNode && { isRootNode: node.isRootNode }),
+              ...(node.parentGraphId && { parentGraphId: node.parentGraphId }),
+              ...(node.parentNodeId && { parentNodeId: node.parentNodeId })
+            };
+          }
+          return node;
+        });
+        
+        return {
+          ...graph,
+          childGraphIds: updatedChildGraphIds.length > 0 ? updatedChildGraphIds : undefined,
+          data: { ...graph.data, nodes: updatedNodes }
+        };
+      }
+      
+      // If this graph has the removed graph as a parent, remove the parent reference
+      if (graph.parentGraphId === graphId) {
+        const updatedNodes = graph.data.nodes.map(node => {
+          // Remove isRootNode flag from nodes that reference the removed parent graph
+          if (node.parentGraphId === graphId) {
+            return {
+              id: node.id,
+              label: node.label,
+              color: node.color,
+              ...(node.hasChildGraph && { hasChildGraph: node.hasChildGraph }),
+              ...(node.childGraphId && { childGraphId: node.childGraphId })
+            };
+          }
+          return node;
+        });
+        
+        const cleanGraph = {
+          id: graph.id,
+          title: graph.title,
+          subject: graph.subject,
+          createdAt: graph.createdAt,
+          model: graph.model,
+          data: graph.data,
+          ...(graph.childGraphIds && { childGraphIds: graph.childGraphIds }),
+          ...(graph.layoutSeed && { layoutSeed: graph.layoutSeed })
+        };
+        return {
+          ...cleanGraph,
+          data: { ...graph.data, nodes: updatedNodes }
+        };
+      }
+      
+      return graph;
+    });
+    
+    // Update allGraphs with unlinked relationships
+    setAllGraphs(updatedAllGraphs);
+    
     // Update visible graphs
-    const newVisibleGraphs = visibleGraphs.filter(g => g.id !== graphId);
+    const newVisibleGraphs = updatedAllGraphs.filter(g => !preferences.hiddenGraphIds.includes(g.id) && g.id !== graphId);
     setVisibleGraphs(newVisibleGraphs);
     
     // Adjust current index if necessary
     setCurrentGraphIndex(prev => prev >= newVisibleGraphs.length ? Math.max(0, newVisibleGraphs.length - 1) : prev);
     
-    const removedGraph = allGraphs.find(g => g.id === graphId);
     return removedGraph ? getGraphTitle(removedGraph) : 'Unknown Graph';
-  }, [allGraphs, visibleGraphs]);
+  }, [allGraphs]);
 
   // === New Navigation Functions ===
 
@@ -207,6 +240,113 @@ export function useGraphData() {
       return updated;
     });
   }, []);
+
+  // Clean up broken links (child graphs that no longer exist)
+  const cleanupBrokenLinks = useCallback((graphs: StoredGraph[]): StoredGraph[] => {
+    const existingGraphIds = new Set(graphs.map(g => g.id));
+    
+    return graphs.map(graph => {
+      let hasChanges = false;
+      
+      // Clean up child graph references that no longer exist
+      const cleanedChildGraphIds = graph.childGraphIds?.filter(childId => {
+        const exists = existingGraphIds.has(childId);
+        if (!exists) hasChanges = true;
+        return exists;
+      });
+      
+      // Clean up nodes with broken child graph references
+      const cleanedNodes = graph.data.nodes.map(node => {
+        if (node.hasChildGraph && node.childGraphId && !existingGraphIds.has(node.childGraphId)) {
+          hasChanges = true;
+          return {
+            id: node.id,
+            label: node.label,
+            color: node.color,
+            ...(node.isRootNode && { isRootNode: node.isRootNode }),
+            ...(node.parentGraphId && { parentGraphId: node.parentGraphId }),
+            ...(node.parentNodeId && { parentNodeId: node.parentNodeId })
+          };
+        }
+        
+        // Clean up nodes with broken parent graph references
+        if (node.isRootNode && node.parentGraphId && !existingGraphIds.has(node.parentGraphId)) {
+          hasChanges = true;
+          return {
+            id: node.id,
+            label: node.label,
+            color: node.color,
+            ...(node.hasChildGraph && { hasChildGraph: node.hasChildGraph }),
+            ...(node.childGraphId && { childGraphId: node.childGraphId })
+          };
+        }
+        
+        return node;
+      });
+      
+      // Clean up graph-level parent references that no longer exist
+      let cleanedGraph = graph;
+      if (graph.parentGraphId && !existingGraphIds.has(graph.parentGraphId)) {
+        hasChanges = true;
+        cleanedGraph = {
+          id: graph.id,
+          title: graph.title,
+          subject: graph.subject,
+          createdAt: graph.createdAt,
+          model: graph.model,
+          data: graph.data,
+          ...(graph.childGraphIds && { childGraphIds: graph.childGraphIds }),
+          ...(graph.layoutSeed && { layoutSeed: graph.layoutSeed })
+        };
+      }
+      
+      if (hasChanges) {
+        return {
+          ...cleanedGraph,
+          childGraphIds: cleanedChildGraphIds && cleanedChildGraphIds.length > 0 ? cleanedChildGraphIds : undefined,
+          data: { ...cleanedGraph.data, nodes: cleanedNodes }
+        };
+      }
+      
+      return graph;
+    });
+  }, []);
+
+  // Initialize graphs from localStorage
+  useEffect(() => {
+    const savedGraphs = loadFromLocalStorage<StoredGraph[]>(STORAGE_KEYS.GRAPHS, []);
+    const preferences = loadFromLocalStorage<UserPreferences>(STORAGE_KEYS.PREFERENCES, { hiddenGraphIds: [] });
+    
+    // Merge saved graphs with examples, avoiding duplicates
+    const existingIds = new Set(savedGraphs.map(g => g.id));
+    const exampleGraphsToAdd = EXAMPLE_GRAPHS.filter(g => !existingIds.has(g.id));
+    let allGraphsData = [...savedGraphs, ...exampleGraphsToAdd];
+    
+    // Clean up any broken links from saved data
+    allGraphsData = cleanupBrokenLinks(allGraphsData);
+    
+    // Filter out hidden graphs
+    const visibleGraphsData = allGraphsData.filter(g => !preferences.hiddenGraphIds.includes(g.id));
+    
+    setAllGraphs(allGraphsData);
+    setVisibleGraphs(visibleGraphsData);
+    
+    // Set initial graph from localStorage or default to latest
+    if (visibleGraphsData.length > 0) {
+      const savedIndex = loadFromLocalStorage<number>(STORAGE_KEYS.CURRENT_GRAPH_INDEX, -1);
+      
+      if (savedIndex >= 0 && savedIndex < visibleGraphsData.length) {
+        // Use saved index if valid
+        setCurrentGraphIndex(savedIndex);
+      } else {
+        // Fallback to latest graph by createdAt timestamp
+        const latestGraphIndex = visibleGraphsData.reduce((latestIndex, graph, index) => {
+          return graph.createdAt > visibleGraphsData[latestIndex].createdAt ? index : latestIndex;
+        }, 0);
+        setCurrentGraphIndex(latestGraphIndex);
+      }
+    }
+  }, [cleanupBrokenLinks]);
 
   // Get current graph
   const currentGraph = visibleGraphs[currentGraphIndex];

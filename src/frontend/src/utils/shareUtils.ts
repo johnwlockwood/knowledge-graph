@@ -32,25 +32,48 @@ export function exportSingleGraph(
   graph: StoredGraph, 
   options: ExportOptions = { format: 'standard', includeMetadata: true, prettyPrint: true }
 ): string {
+  // Create a clean copy of the graph without child graph references for single export
+  const cleanGraph: StoredGraph = {
+    ...graph,
+    // Remove parent/child relationship properties for single graph export
+    parentGraphId: undefined,
+    parentNodeId: undefined,
+    sourceNodeLabel: undefined,
+    childGraphIds: undefined,
+    data: {
+      nodes: graph.data.nodes.map(node => ({
+        ...node,
+        // Remove child graph references from nodes
+        hasChildGraph: undefined,
+        childGraphId: undefined,
+        // Remove parent graph references from nodes
+        isRootNode: undefined,
+        parentGraphId: undefined,
+        parentNodeId: undefined
+      })),
+      edges: [...graph.data.edges] // Edges don't need cleaning
+    }
+  };
+
   let exportData: Record<string, unknown>;
 
   switch (options.format) {
     case 'minimal':
       exportData = {
-        nodes: graph.data.nodes,
-        edges: graph.data.edges
+        nodes: cleanGraph.data.nodes,
+        edges: cleanGraph.data.edges
       };
       break;
     
     case 'shareable':
       exportData = {
         sharedKnowledge: {
-          title: graph.title,
-          description: `Knowledge graph about ${graph.subject}`,
+          title: cleanGraph.title,
+          description: `Knowledge graph about ${cleanGraph.subject}`,
           exportedAt: new Date().toISOString(),
           exportedBy: "Knowledge Graph Generator",
           version: "1.0",
-          graphs: [graph]
+          graphs: [cleanGraph]
         }
       };
       break;
@@ -63,7 +86,7 @@ export function exportSingleGraph(
           exportedBy: "Knowledge Graph Generator",
           version: "1.0",
           type: "single",
-          graph: graph
+          graph: cleanGraph
         }
       };
       break;
