@@ -23,6 +23,31 @@ ruff check src/                   # Lint Python code
 ruff format src/                  # Format Python code
 ```
 
+### Model Configuration
+Configure available AI models per environment using the `AVAILABLE_MODELS` environment variable:
+
+```bash
+# Default: All models available
+# No environment variable set = all models enabled
+
+# Production: Limit to specific models
+AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o4-mini-2025-04-16"
+
+# Development: Enable experimental models
+AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o3-2025-04-16,gpt-4.1-2025-04-14"
+
+# Single model only
+AVAILABLE_MODELS="gpt-4o-mini-2024-07-18"
+```
+
+**Available Models:**
+- `gpt-4o-mini-2024-07-18` - Fast and efficient
+- `gpt-4.1-mini-2025-04-14` - Enhanced reasoning  
+- `o4-mini-2025-04-16` - Latest with improved accuracy
+- `o3-2025-04-16` - Advanced reasoning and problem-solving
+- `gpt-4.1-2025-04-14` - Flagship GPT model
+- `gpt-4o-2024-08-06` - Fast, intelligent, flexible
+
 ### Testing
 ```bash
 pytest tests/                          # Run all tests
