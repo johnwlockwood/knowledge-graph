@@ -23,7 +23,7 @@ interface StreamingGraphGeneratorProps {
 
 export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetState, onSetInputSubject, onSetGenerateFromNode, currentGraph }: StreamingGraphGeneratorProps) {
   const [subject, setSubject] = useState('');
-  const [selectedModel, setSelectedModel] = useState<AvailableModel>('o4-mini-2025-04-16');
+  const [selectedModel, setSelectedModel] = useState<AvailableModel>('gpt-4.1-2025-04-14');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileWidgetRef = useRef<{ resetWidget?: () => void }>(null);
   
@@ -32,7 +32,7 @@ export function StreamingGraphGenerator({ onGraphGenerated, onToast, onResetStat
   
   // Load saved model on component mount
   useEffect(() => {
-    const savedModel = loadFromLocalStorage<AvailableModel>(STORAGE_KEYS.SELECTED_MODEL, 'o4-mini-2025-04-16');
+    const savedModel = loadFromLocalStorage<AvailableModel>(STORAGE_KEYS.SELECTED_MODEL, 'gpt-4.1-2025-04-14');
     setSelectedModel(savedModel);
   }, []);
   

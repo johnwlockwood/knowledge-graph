@@ -6,4 +6,6 @@ pydantic
 dotenv>=0.9.9
 cachetools>=6.0.0
 httpx>=0.28.1
+pytest>=7.0.0
+pytest-mock>=3.10.0
 

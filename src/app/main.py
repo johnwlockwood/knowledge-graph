@@ -5,20 +5,19 @@ import logging
 import time
 import collections.abc
 import httpx
-from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 from cachetools import TTLCache
 from graph import agenerate_graph, stream_generate_graph, stream_generate_users
+from models import get_available_models, validate_model as is_model_valid
 
 
 load_dotenv()
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
 TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY")
-
 
 # Configure package-level logger
 logger = logging.getLogger("app")  # Parent logger for "app" package
@@ -36,6 +35,10 @@ logger.debug("Application starting up")
 module_logger = logging.getLogger(__name__)  # __name__ = "app.main"
 
 results = {}  # In-memory storage (use Redis in production)
+
+# Get available models from centralized models module
+AVAILABLE_MODELS = get_available_models()
+
 
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = int(
@@ -168,23 +171,20 @@ class UsersRequest(BaseModel):
     number_of_users: int = 10
 
 
-MODELS = [
-    "gpt-4o-mini-2024-07-18",
-    "gpt-4.1-mini-2025-04-14",
-    "gpt-3.5-turbo-0125",
-    "gpt-3.5-turbo-16k-0613",
-    "o4-mini-2025-04-16",
-    "gpt-4.1-2025-04-14",
-    "gpt-4o-2024-08-06",
-]
-
-
 class ModelRequest(BaseModel):
-    model: (
-        Literal["gpt-4o-mini-2024-07-18"]
-        | Literal["gpt-4.1-mini-2025-04-14"]
-        | Literal["o4-mini-2025-04-16"]
-    )
+    model: str
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        """Validate that the model is available in the current environment."""
+        if not is_model_valid(v):
+            available_models = get_available_models()
+            raise ValueError(
+                f"Model '{v}' is not available in this environment. "
+                f"Available models: {available_models}"
+            )
+        return v
 
 
 async def process_openai(request: SubjectRequest, task_id: str):
@@ -255,23 +255,35 @@ async def generate_graph_stream_response(
 
 class StreamingGraphRequest(BaseModel):
     subject: str
-    model: (
-        Literal["gpt-4o-mini-2024-07-18"]
-        | Literal["gpt-4.1-mini-2025-04-14"]
-        | Literal["o4-mini-2025-04-16"]
-        | Literal["gpt-4.1-2025-04-14"]
-        | Literal["gpt-4o-2024-08-06"]
-    )
+    model: str
     turnstile_token: str | None = None
     parent_graph_id: str | None = None  # Parent graph ID
     parent_node_id: int | None = None  # Parent node ID
     source_node_label: str | None = None  # Source node label
     title: str | None = None  # Graph title for hierarchy
 
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        """Validate that the model is available in the current environment."""
+        if not is_model_valid(v):
+            available_models = get_available_models()
+            raise ValueError(
+                f"Model '{v}' is not available in this environment. "
+                f"Available models: {available_models}"
+            )
+        return v
+
 
 @app.get("/")
 async def home():
     return {"data": "hello world"}
+
+
+@app.get("/api/available-models")
+async def get_available_models():
+    """Return the list of available models for this environment."""
+    return {"models": AVAILABLE_MODELS}
 
 
 @app.get("/api/rate-limit-test")
@@ -301,6 +313,9 @@ async def stream_generate_knowledge_graph(
     the specified model.
     This endpoint streams the graph entities as they are generated.
     """
+    # Note: Model validation is handled automatically
+    # by Pydantic field_validator
+
     # Verify Turnstile token if provided
     if request.turnstile_token:
         client_ip = get_client_ip(http_request)
