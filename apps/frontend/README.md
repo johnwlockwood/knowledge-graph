@@ -199,7 +199,7 @@ AVAILABLE_MODELS="gpt-4o-mini-2024-07-18"
 - **Dynamic Configuration**: Frontend fetches available models from `/api/available-models`
 - **Graceful Fallback**: If selected model becomes unavailable, automatically switches to most powerful available
 - **Environment Validation**: Invalid model configurations fall back to all models with warning logs
-- **Centralized Management**: All model configuration handled in `src/app/models.py`
+- **Centralized Management**: All model configuration handled in `apps/api/src/models.py`
 
 ## Getting Started
 
@@ -224,7 +224,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Project Structure
 
-- `src/app/` - Next.js app directory with main layout and pages
+- `apps/api/src/` - Next.js app directory with main layout and pages
 - `src/components/KnowledgeGraph/` - Main graph components
 - `src/hooks/` - Custom React hooks for data management
 - `src/utils/` - Utility functions and constants

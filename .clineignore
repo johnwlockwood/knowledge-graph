@@ -1,12 +1,12 @@
 # NextJS Build and Dependencies
-src/frontend/.next/
-src/frontend/node_modules/
-src/frontend/out/
-src/frontend/build/
-src/frontend/coverage/
-src/frontend/.vercel/
-src/frontend/*.tsbuildinfo
-src/frontend/next-env.d.ts
+apps/frontend/.next/
+apps/frontend/node_modules/
+apps/frontend/out/
+apps/frontend/build/
+apps/frontend/coverage/
+apps/frontend/.vercel/
+apps/frontend/*.tsbuildinfo
+apps/frontend/next-env.d.ts
 
 # Python
 *__pycache__/
@@ -29,8 +29,8 @@ env/
 
 # Package Managers
 uv.lock
-src/frontend/package-lock.json
-src/frontend/yarn.lock
+apps/frontend/package-lock.json
+apps/frontend/yarn.lock
 
 # IDE and System
 .DS_Store

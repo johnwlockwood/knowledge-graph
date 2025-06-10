@@ -16,7 +16,7 @@ npm run lint    # Lint frontend code with ESLint
 ### Backend Development
 ```bash
 # From project root
-python src/app/main.py            # Run FastAPI backend server on localhost:8000
+python apps/api/src/main.py            # Run FastAPI backend server on localhost:8000
 uv pip install -e .               # Development install with dependencies
 uv sync                           # Sync dependencies from uv.lock
 ruff check src/                   # Lint Python code
@@ -50,7 +50,7 @@ AVAILABLE_MODELS="gpt-4o-mini-2024-07-18"
 - `gpt-3.5-turbo-0125` - **Legacy**: Legacy model for basic tasks
 
 **Model Management:**
-- **Centralized Configuration**: All model logic in `src/app/models.py`
+- **Centralized Configuration**: All model logic in `apps/api/src/models.py`
 - **Automatic Selection**: Always defaults to most powerful available model
 - **Dynamic Validation**: Pydantic models validate against current environment
 - **Graceful Fallback**: Invalid configurations fall back to all models
@@ -91,7 +91,7 @@ tests/
 This is a full-stack knowledge graph visualization application with three main components:
 
 ### Backend (Python FastAPI)
-- **Location**: `src/app/`
+- **Location**: `apps/api/src/`
 - **Entry Point**: `main.py` - FastAPI server with CORS enabled
 - **Core Logic**: `graph.py` - OpenAI/Instructor integration for graph generation
 - **Models**: Pydantic models for Node, Edge, KnowledgeGraph, and streaming entities
@@ -99,14 +99,14 @@ This is a full-stack knowledge graph visualization application with three main c
 - **Dependencies**: FastAPI, OpenAI, Instructor, Pydantic, python-dotenv
 
 ### Frontend (Next.js 15 + React 19)
-- **Location**: `src/frontend/`
+- **Location**: `apps/frontend/`
 - **Framework**: Next.js 15 with Turbopack, React 19, TypeScript
 - **Visualization**: vis-network library for interactive graph rendering
 - **Styling**: Tailwind CSS v4 with custom gradient designs
 - **State Management**: Custom hooks with localStorage persistence
 
 ### Key Frontend Architecture
-- **Main Component**: `src/frontend/src/components/KnowledgeGraph/index.tsx`
+- **Main Component**: `apps/frontend/src/components/KnowledgeGraph/index.tsx`
 - **Streaming**: `StreamingGraphGenerator.tsx` handles real-time graph generation
 - **Visualization**: `GraphVisualization.tsx` manages vis-network integration
 - **Navigation**: Multi-graph workspace with timeline navigation
@@ -126,7 +126,7 @@ This is a full-stack knowledge graph visualization application with three main c
 - Functional components with hooks
 - Tailwind CSS for styling
 - ESLint with Next.js configuration
-- Brian Chesky UI philosophy (see `src/frontend/CLAUDE.md`)
+- Brian Chesky UI philosophy (see `apps/frontend/CLAUDE.md`)
 
 ### Environment Setup
 - Backend requires OpenAI API key in environment variables
@@ -141,11 +141,11 @@ The application uses Server-Sent Events for real-time graph generation:
 - Error handling includes validation errors and network issues
 
 ## Key Files to Understand
-- `src/app/models.py` - **Centralized AI model configuration and validation**
-- `src/app/main.py:298-384` - Streaming graph generation endpoints with dynamic model validation
-- `src/app/graph.py:97-127` - Core streaming logic with OpenAI integration
-- `src/frontend/src/components/KnowledgeGraph/StreamingGraphGenerator.tsx` - Frontend streaming with model selection
-- `src/frontend/src/components/KnowledgeGraph/UI/ModelSelector.tsx` - Dynamic model selector component
-- `src/frontend/src/hooks/useStreamingGraph.tsx` - Streaming state management
-- `src/frontend/src/hooks/useGraphData.tsx` - Graph data persistence
+- `apps/api/src/models.py` - **Centralized AI model configuration and validation**
+- `apps/api/src/main.py:298-384` - Streaming graph generation endpoints with dynamic model validation
+- `apps/api/src/graph.py:97-127` - Core streaming logic with OpenAI integration
+- `apps/frontend/src/components/KnowledgeGraph/StreamingGraphGenerator.tsx` - Frontend streaming with model selection
+- `apps/frontend/src/components/KnowledgeGraph/UI/ModelSelector.tsx` - Dynamic model selector component
+- `apps/frontend/src/hooks/useStreamingGraph.tsx` - Streaming state management
+- `apps/frontend/src/hooks/useGraphData.tsx` - Graph data persistence
 - `tests/test_models.py` - Comprehensive model configuration tests
