@@ -48,7 +48,6 @@ AVAILABLE_MODELS="gpt-4o-mini-2024-07-18"
 - `gpt-4.1-mini-2025-04-14` - **Enhanced Mini**: Enhanced reasoning capabilities
 - `gpt-4o-mini-2024-07-18` - **Efficient**: Fast and efficient for most graphs
 - `gpt-3.5-turbo-0125` - **Legacy**: Legacy model for basic tasks
-- `gpt-3.5-turbo-16k-0613` - **Legacy Large**: Legacy with larger context
 
 **Model Management:**
 - **Centralized Configuration**: All model logic in `src/app/models.py`
