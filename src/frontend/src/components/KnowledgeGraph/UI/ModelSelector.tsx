@@ -8,7 +8,8 @@ export type AvailableModel =
   | "o4-mini-2025-04-16" 
   | "o3-2025-04-16"
   | "gpt-4.1-2025-04-14"
-  | "gpt-4o-2024-08-06";
+  | "gpt-4o-2024-08-06"
+  | "gpt-3.5-turbo-0125";
 
 interface ModelSelectorProps {
   selectedModel: AvailableModel;
@@ -30,10 +31,15 @@ const MODEL_PRIORITY: AvailableModel[] = [
   "o4-mini-2025-04-16",      // Latest with improved accuracy
   "gpt-4.1-mini-2025-04-14", // Enhanced reasoning mini
   "gpt-4o-mini-2024-07-18",  // Fast and efficient mini
+  "gpt-3.5-turbo-0125",  // Fast legacy model
 ];
 
 // Static model information for display
 const MODEL_INFO: Record<AvailableModel, { label: string; description: string }> = {
+  "gpt-3.5-turbo-0125": {
+    label: "GPT-3.5-Turbo",
+    description: "Fast legacy model"
+  },
   "gpt-4o-mini-2024-07-18": {
     label: "GPT-4o Mini",
     description: "Fast and efficient for most knowledge graphs"
@@ -81,43 +87,35 @@ export function ModelSelector({ selectedModel, onModelChange, disabled = false }
           const data = await response.json();
           const models = data.models as AvailableModel[];
           setAvailableModels(models);
-          
-          // If current selected model is not available, switch to most powerful available
-          if (models.length > 0 && !models.includes(selectedModel)) {
-            // Find the most powerful model that's available
-            const bestAvailableModel = MODEL_PRIORITY.find(model => models.includes(model));
-            if (bestAvailableModel) {
-              onModelChange(bestAvailableModel);
-            }
-          }
         } else {
           console.error('Failed to fetch available models');
           // Fallback to all models if API fails
           const allModels = Object.keys(MODEL_INFO) as AvailableModel[];
           setAvailableModels(allModels);
-          // Switch to most powerful model if current isn't available
-          if (!allModels.includes(selectedModel)) {
-            const bestModel = MODEL_PRIORITY.find(model => allModels.includes(model));
-            if (bestModel) onModelChange(bestModel);
-          }
         }
       } catch (error) {
         console.error('Error fetching available models:', error);
         // Fallback to all models if API fails
         const allModels = Object.keys(MODEL_INFO) as AvailableModel[];
         setAvailableModels(allModels);
-        // Switch to most powerful model if current isn't available
-        if (!allModels.includes(selectedModel)) {
-          const bestModel = MODEL_PRIORITY.find(model => allModels.includes(model));
-          if (bestModel) onModelChange(bestModel);
-        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchAvailableModels();
-  }, []); // Run only on mount
+  }, []); // Only run on mount
+
+  // Handle model availability changes
+  useEffect(() => {
+    if (availableModels.length > 0 && !availableModels.includes(selectedModel)) {
+      // Find the most powerful model that's available
+      const bestAvailableModel = MODEL_PRIORITY.find(model => availableModels.includes(model));
+      if (bestAvailableModel) {
+        onModelChange(bestAvailableModel);
+      }
+    }
+  }, [availableModels, selectedModel, onModelChange]);
 
   // Create model options from available models
   const modelOptions: ModelInfo[] = availableModels.map(model => ({

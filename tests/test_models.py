@@ -38,7 +38,6 @@ class TestModelConstants:
             "gpt-4o-mini-2024-07-18",
             "gpt-4.1-mini-2025-04-14",
             "gpt-3.5-turbo-0125",
-            "gpt-3.5-turbo-16k-0613",
             "o4-mini-2025-04-16",
             "o3-2025-04-16",
             "gpt-4.1-2025-04-14",
@@ -62,7 +61,6 @@ class TestModelConstants:
             "gpt-4.1-mini-2025-04-14",  # Enhanced reasoning mini
             "gpt-4o-mini-2024-07-18",  # Fast and efficient mini
             "gpt-3.5-turbo-0125",  # Legacy model
-            "gpt-3.5-turbo-16k-0613",  # Legacy model with larger context
         ]
         assert MODEL_PRIORITY == expected_priority
 
