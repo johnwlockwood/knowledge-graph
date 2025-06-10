@@ -185,18 +185,22 @@ AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o3-2025-04-16,gpt-4.1-2025-04-14"
 AVAILABLE_MODELS="gpt-4o-mini-2024-07-18"
 ```
 
-**Available Models:**
-- `gpt-4o-mini-2024-07-18` - Fast and efficient for most knowledge graphs
-- `gpt-4.1-mini-2025-04-14` - Enhanced reasoning capabilities
-- `o4-mini-2025-04-16` - Latest model with improved accuracy
-- `o3-2025-04-16` - Advanced reasoning and problem-solving model
-- `gpt-4.1-2025-04-14` - Flagship GPT model for complex tasks
-- `gpt-4o-2024-08-06` - Fast, intelligent, flexible GPT model
+**Available Models (ordered by capability):**
+- `gpt-4.1-2025-04-14` - **Most Powerful**: Flagship GPT model for complex tasks
+- `o3-2025-04-16` - **Advanced**: Advanced reasoning and problem-solving model  
+- `gpt-4o-2024-08-06` - **Fast & Intelligent**: Fast, intelligent, flexible GPT model
+- `o4-mini-2025-04-16` - **Latest Mini**: Latest model with improved accuracy
+- `gpt-4.1-mini-2025-04-14` - **Enhanced Mini**: Enhanced reasoning capabilities
+- `gpt-4o-mini-2024-07-18` - **Efficient**: Fast and efficient for most knowledge graphs
+- `gpt-3.5-turbo-0125` - **Legacy**: Legacy model for basic tasks
+- `gpt-3.5-turbo-16k-0613` - **Legacy Large Context**: Legacy model with larger context
 
 **Model Selection Behavior:**
-- Frontend automatically fetches available models from `/api/available-models`
-- If selected model becomes unavailable, automatically switches to first available
-- Invalid model configurations fall back to all models with warning logs
+- **Default Selection**: System automatically selects the most powerful available model
+- **Dynamic Configuration**: Frontend fetches available models from `/api/available-models`
+- **Graceful Fallback**: If selected model becomes unavailable, automatically switches to most powerful available
+- **Environment Validation**: Invalid model configurations fall back to all models with warning logs
+- **Centralized Management**: All model configuration handled in `src/app/models.py`
 
 ## Getting Started
 
@@ -233,6 +237,141 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - `npm run build` - Build production version
 - `npm run start` - Start production server
 - `npm run lint` - Lint code with ESLint
+
+## Testing
+
+The project includes comprehensive test coverage for critical backend components.
+
+### Running Tests
+
+From the project root directory:
+
+```bash
+# Run all tests
+python -m pytest
+
+# Run tests with verbose output
+python -m pytest -v
+
+# Run tests in quiet mode
+python -m pytest -q
+
+# Run specific test file
+python -m pytest tests/test_models.py
+
+# Run specific test class
+python -m pytest tests/test_models.py::TestGetAvailableModels -v
+
+# Run tests with coverage (if coverage is installed)
+python -m pytest --cov=src/app
+
+# Run tests and generate HTML coverage report
+python -m pytest --cov=src/app --cov-report=html
+```
+
+### Test Structure
+
+```
+tests/
+├── __init__.py
+├── test_models.py          # Models module tests (34 tests)
+└── pytest.ini             # Pytest configuration
+```
+
+### Test Categories
+
+#### Models Module Tests (`test_models.py`)
+Comprehensive testing of the centralized AI model configuration system:
+
+- **Model Constants** (4 tests) - Validates model lists and priority ordering
+- **Environment Parsing** (8 tests) - Tests environment variable parsing and validation
+- **Default Selection** (4 tests) - Tests automatic selection of most powerful model
+- **Model Validation** (5 tests) - Tests model availability checking
+- **Best Model Selection** (5 tests) - Tests preference-based model selection
+- **Type Creation** (2 tests) - Tests dynamic Literal type generation
+- **Integration** (3 tests) - Tests complete workflows and realistic scenarios
+- **Edge Cases** (3 tests) - Tests error handling and malformed inputs
+
+#### Test Coverage Areas
+
+**Environment Configuration Testing:**
+```bash
+# Test with limited models
+AVAILABLE_MODELS="gpt-4.1-2025-04-14,o3-2025-04-16" python -m pytest tests/test_models.py::TestIntegration -v
+
+# Test production configuration
+AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o4-mini-2025-04-16" python -m pytest
+
+# Test with invalid models (should fallback gracefully)
+AVAILABLE_MODELS="invalid-model,another-invalid" python -m pytest tests/test_models.py::TestGetAvailableModels::test_only_invalid_models_returns_all_models -v
+```
+
+**Key Testing Features:**
+- Environment isolation using `unittest.mock.patch`
+- Comprehensive edge case coverage
+- Integration testing across multiple functions
+- Realistic production/development scenario testing
+- Graceful error handling validation
+
+### Test Configuration
+
+Tests are configured via `pytest.ini`:
+
+```ini
+[tool:pytest]
+testpaths = tests
+python_files = test_*.py *_test.py
+python_classes = Test*
+python_functions = test_*
+addopts = -v --tb=short
+markers =
+    slow: marks tests as slow (deselect with '-m "not slow"')
+    integration: marks tests as integration tests
+    unit: marks tests as unit tests
+```
+
+### Adding New Tests
+
+When adding new functionality:
+
+1. **Create test file**: `tests/test_<module_name>.py`
+2. **Follow naming conventions**: `TestClassName` and `test_method_name`
+3. **Use environment isolation**: `@patch.dict(os.environ, {...})`
+4. **Test edge cases**: Invalid inputs, empty values, error conditions
+5. **Add integration tests**: Test interactions between components
+
+Example test structure:
+```python
+class TestNewModule:
+    """Test the new module functionality."""
+    
+    def test_normal_case(self):
+        """Test normal operation."""
+        # Test implementation
+        
+    def test_edge_case(self):
+        """Test edge case handling."""
+        # Edge case testing
+        
+    def test_error_condition(self):
+        """Test error handling."""
+        # Error condition testing
+```
+
+### Dependencies
+
+Test dependencies are managed in `requirements.txt`:
+- `pytest>=7.0.0` - Testing framework
+- `pytest-mock>=3.10.0` - Mocking utilities
+
+Install test dependencies:
+```bash
+# Using pip
+pip install -r requirements.txt
+
+# Using uv (recommended)
+uv sync
+```
 
 ## Learn More
 

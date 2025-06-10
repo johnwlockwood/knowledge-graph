@@ -5,14 +5,14 @@ import logging
 import time
 import collections.abc
 import httpx
-from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 from cachetools import TTLCache
 from graph import agenerate_graph, stream_generate_graph, stream_generate_users
+from models import get_available_models, validate_model as is_model_valid
 
 
 load_dotenv()
@@ -36,41 +36,8 @@ module_logger = logging.getLogger(__name__)  # __name__ = "app.main"
 
 results = {}  # In-memory storage (use Redis in production)
 
-# Available models configuration
-ALL_MODELS = [
-    "gpt-4o-mini-2024-07-18",
-    "gpt-4.1-mini-2025-04-14",
-    "o4-mini-2025-04-16",
-    "o3-2025-04-16",
-    "gpt-4.1-2025-04-14",
-    "gpt-4o-2024-08-06",
-]
-
-# Get available models from environment variable or use all models as default
-AVAILABLE_MODELS_ENV = os.getenv("AVAILABLE_MODELS", "")
-if AVAILABLE_MODELS_ENV:
-    # Parse comma-separated list of models
-    AVAILABLE_MODELS = [
-        model.strip()
-        for model in AVAILABLE_MODELS_ENV.split(",")
-        if model.strip() in ALL_MODELS
-    ]
-    if not AVAILABLE_MODELS:
-        # If no valid models found, use all models
-        AVAILABLE_MODELS = ALL_MODELS
-        module_logger.warning(
-            f"No valid models found in AVAILABLE_MODELS "
-            f"environment variable: {AVAILABLE_MODELS_ENV}. Using all models."
-        )
-    else:
-        module_logger.info(f"Using configured models: {AVAILABLE_MODELS}")
-else:
-    # No environment variable set, use all models
-    AVAILABLE_MODELS = ALL_MODELS
-    module_logger.info(
-        f"No AVAILABLE_MODELS environment variable set. "
-        f"Using all models: {AVAILABLE_MODELS}"
-    )
+# Get available models from centralized models module
+AVAILABLE_MODELS = get_available_models()
 
 
 # Rate limiting configuration
@@ -205,11 +172,19 @@ class UsersRequest(BaseModel):
 
 
 class ModelRequest(BaseModel):
-    model: (
-        Literal["gpt-4o-mini-2024-07-18"]
-        | Literal["gpt-4.1-mini-2025-04-14"]
-        | Literal["o4-mini-2025-04-16"]
-    )
+    model: str
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        """Validate that the model is available in the current environment."""
+        if not is_model_valid(v):
+            available_models = get_available_models()
+            raise ValueError(
+                f"Model '{v}' is not available in this environment. "
+                f"Available models: {available_models}"
+            )
+        return v
 
 
 async def process_openai(request: SubjectRequest, task_id: str):
@@ -280,19 +255,24 @@ async def generate_graph_stream_response(
 
 class StreamingGraphRequest(BaseModel):
     subject: str
-    model: (
-        Literal["gpt-4o-mini-2024-07-18"]
-        | Literal["gpt-4.1-mini-2025-04-14"]
-        | Literal["o4-mini-2025-04-16"]
-        | Literal["o3-2025-04-16"]
-        | Literal["gpt-4.1-2025-04-14"]
-        | Literal["gpt-4o-2024-08-06"]
-    )
+    model: str
     turnstile_token: str | None = None
     parent_graph_id: str | None = None  # Parent graph ID
     parent_node_id: int | None = None  # Parent node ID
     source_node_label: str | None = None  # Source node label
     title: str | None = None  # Graph title for hierarchy
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        """Validate that the model is available in the current environment."""
+        if not is_model_valid(v):
+            available_models = get_available_models()
+            raise ValueError(
+                f"Model '{v}' is not available in this environment. "
+                f"Available models: {available_models}"
+            )
+        return v
 
 
 @app.get("/")
@@ -333,17 +313,8 @@ async def stream_generate_knowledge_graph(
     the specified model.
     This endpoint streams the graph entities as they are generated.
     """
-    # Validate that the requested model is available in this environment
-    if request.model not in AVAILABLE_MODELS:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Model not available",
-                "message": f"Model '{request.model}' is not available in this "
-                f"environment. Available models: {AVAILABLE_MODELS}",
-                "available_models": AVAILABLE_MODELS,
-            },
-        )
+    # Note: Model validation is handled automatically
+    # by Pydantic field_validator
 
     # Verify Turnstile token if provided
     if request.turnstile_token:

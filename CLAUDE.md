@@ -27,32 +27,65 @@ ruff format src/                  # Format Python code
 Configure available AI models per environment using the `AVAILABLE_MODELS` environment variable:
 
 ```bash
-# Default: All models available
+# Default: All models available (most powerful selected automatically)
 # No environment variable set = all models enabled
 
-# Production: Limit to specific models
+# Production: Limit to cost-effective models
 AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o4-mini-2025-04-16"
 
-# Development: Enable experimental models
-AVAILABLE_MODELS="gpt-4o-mini-2024-07-18,o3-2025-04-16,gpt-4.1-2025-04-14"
+# Development: Enable experimental models  
+AVAILABLE_MODELS="gpt-4.1-2025-04-14,o3-2025-04-16,gpt-4o-2024-08-06"
 
-# Single model only
+# Testing: Single model for consistency
 AVAILABLE_MODELS="gpt-4o-mini-2024-07-18"
 ```
 
-**Available Models:**
-- `gpt-4o-mini-2024-07-18` - Fast and efficient
-- `gpt-4.1-mini-2025-04-14` - Enhanced reasoning  
-- `o4-mini-2025-04-16` - Latest with improved accuracy
-- `o3-2025-04-16` - Advanced reasoning and problem-solving
-- `gpt-4.1-2025-04-14` - Flagship GPT model
-- `gpt-4o-2024-08-06` - Fast, intelligent, flexible
+**Available Models (by priority - most powerful first):**
+- `gpt-4.1-2025-04-14` - **Most Powerful**: Flagship GPT model for complex tasks
+- `o3-2025-04-16` - **Advanced**: Advanced reasoning and problem-solving  
+- `gpt-4o-2024-08-06` - **Fast & Intelligent**: Fast, intelligent, flexible
+- `o4-mini-2025-04-16` - **Latest Mini**: Latest with improved accuracy
+- `gpt-4.1-mini-2025-04-14` - **Enhanced Mini**: Enhanced reasoning capabilities
+- `gpt-4o-mini-2024-07-18` - **Efficient**: Fast and efficient for most graphs
+- `gpt-3.5-turbo-0125` - **Legacy**: Legacy model for basic tasks
+- `gpt-3.5-turbo-16k-0613` - **Legacy Large**: Legacy with larger context
+
+**Model Management:**
+- **Centralized Configuration**: All model logic in `src/app/models.py`
+- **Automatic Selection**: Always defaults to most powerful available model
+- **Dynamic Validation**: Pydantic models validate against current environment
+- **Graceful Fallback**: Invalid configurations fall back to all models
+- **Environment Driven**: Different model sets per deployment environment
 
 ### Testing
 ```bash
-pytest tests/                          # Run all tests
-pytest tests/path/to/test_file.py      # Run specific test file
+python -m pytest                       # Run all tests
+python -m pytest -v                    # Run with verbose output
+python -m pytest tests/test_models.py  # Run specific test file
+python -m pytest --cov=src/app         # Run with coverage report
 ```
+
+**Test Coverage:**
+- **Models Module**: 34 comprehensive tests covering environment configuration, model validation, priority selection, and edge cases
+- **Environment Isolation**: Tests use mocking to isolate environment variables
+- **Integration Testing**: Validates complete workflows and realistic deployment scenarios
+- **Edge Case Coverage**: Tests malformed inputs, invalid models, and error conditions
+
+**Test Structure:**
+```
+tests/
+├── __init__.py
+├── test_models.py          # Models module (34 tests)
+├── pytest.ini             # Test configuration
+└── [future test files]
+```
+
+**Key Test Categories:**
+- Environment variable parsing and validation
+- Model priority and default selection logic  
+- Dynamic model validation with Pydantic
+- Graceful error handling and fallbacks
+- Production/development configuration scenarios
 
 ## Architecture Overview
 
@@ -109,8 +142,11 @@ The application uses Server-Sent Events for real-time graph generation:
 - Error handling includes validation errors and network issues
 
 ## Key Files to Understand
-- `src/app/main.py:93-161` - Streaming graph generation endpoints
-- `src/app/graph.py:102-127` - Core streaming logic with OpenAI
-- `src/frontend/src/components/KnowledgeGraph/StreamingGraphGenerator.tsx` - Frontend streaming
+- `src/app/models.py` - **Centralized AI model configuration and validation**
+- `src/app/main.py:298-384` - Streaming graph generation endpoints with dynamic model validation
+- `src/app/graph.py:97-127` - Core streaming logic with OpenAI integration
+- `src/frontend/src/components/KnowledgeGraph/StreamingGraphGenerator.tsx` - Frontend streaming with model selection
+- `src/frontend/src/components/KnowledgeGraph/UI/ModelSelector.tsx` - Dynamic model selector component
 - `src/frontend/src/hooks/useStreamingGraph.tsx` - Streaming state management
 - `src/frontend/src/hooks/useGraphData.tsx` - Graph data persistence
+- `tests/test_models.py` - Comprehensive model configuration tests

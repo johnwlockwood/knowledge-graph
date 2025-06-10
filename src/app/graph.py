@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator
 from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
+from models import get_available_models, get_default_model, validate_model as is_model_valid
 
 
 load_dotenv()
@@ -57,17 +58,9 @@ class User(BaseModel):
     age: int
 
 
-MODELS = [
-    "gpt-4o-mini-2024-07-18",
-    "gpt-4.1-mini-2025-04-14",
-    "gpt-3.5-turbo-0125",
-    "gpt-3.5-turbo-16k-0613",
-    "o4-mini-2025-04-16",
-    "o3-2025-04-16",
-    "gpt-4.1-2025-04-14",
-    "gpt-4o-2024-08-06",
-]
-GRAPH_MODEL = MODELS[0]
+# Get models from centralized models module
+MODELS = get_available_models()
+GRAPH_MODEL = get_default_model()
 
 
 async def agenerate_graph(input: str) -> dict:
@@ -100,7 +93,7 @@ async def stream_generate_graph(
     """Stream a knowledge graph based on the input text
     using the specified model."""
     logger.debug("Generating graph for subject")
-    graph_model = model if model in MODELS else MODELS[0]
+    graph_model = model if is_model_valid(model) else get_default_model()
     logger.info(f"model requested: {model}, model used: {graph_model}")
     graph_entities = client.chat.completions.create_iterable(
         model=graph_model,
@@ -126,7 +119,7 @@ async def stream_generate_users(
 ) -> AsyncGenerator[User | None, None]:
     """Stream a knowledge graph based on the input text
     using the specified model."""
-    graph_model = model if model in MODELS else MODELS[0]
+    graph_model = model if is_model_valid(model) else get_default_model()
     logger.info(f"users requested from input: {input}")
     logger.info(f"model requested: {model}, model used: {graph_model}")
     graph_entities = client.chat.completions.create_iterable(
