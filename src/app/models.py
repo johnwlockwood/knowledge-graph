@@ -93,20 +93,6 @@ def get_default_model() -> str:
     return available_models[0] if available_models else ALL_MODELS[0]
 
 
-def create_model_literal_type():
-    """
-    Create a dynamic Literal type for available models.
-
-    Returns:
-        A Literal type containing all available models.
-    """
-    available_models = get_available_models()
-    if len(available_models) == 1:
-        return type(available_models[0])
-    else:
-        return type(tuple(available_models))
-
-
 def validate_model(model: str) -> bool:
     """
     Validate if a model is available in the current environment.

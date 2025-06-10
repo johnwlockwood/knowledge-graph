@@ -24,7 +24,6 @@ from models import (  # type: ignore
     get_default_model,
     validate_model,
     get_best_available_model,
-    create_model_literal_type,
     MODELS,
     GRAPH_MODEL,
 )
@@ -296,31 +295,6 @@ class TestGetBestAvailableModel:
                 del os.environ["AVAILABLE_MODELS"]
             result = get_best_available_model("")
             assert result == get_default_model()
-
-
-class TestCreateModelLiteralType:
-    """Test the create_model_literal_type function."""
-
-    def test_creates_literal_type_for_single_model(self):
-        """Test that a Literal type is created for a single model."""
-        with patch.dict(
-            os.environ, {"AVAILABLE_MODELS": "gpt-4.1-2025-04-14"}
-        ):
-            literal_type = create_model_literal_type()
-            # This is a basic test - full type validation would
-            # require more complex setup
-            assert literal_type is not None
-
-    def test_creates_literal_type_for_multiple_models(self):
-        """Test that a Literal type is created for multiple models."""
-        with patch.dict(
-            os.environ,
-            {"AVAILABLE_MODELS": "gpt-4.1-2025-04-14,o3-2025-04-16"},
-        ):
-            literal_type = create_model_literal_type()
-            # This is a basic test - full type validation would
-            # require more complex setup
-            assert literal_type is not None
 
 
 class TestIntegration:
