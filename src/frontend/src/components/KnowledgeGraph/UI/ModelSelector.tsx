@@ -117,7 +117,7 @@ export function ModelSelector({ selectedModel, onModelChange, disabled = false }
     };
 
     fetchAvailableModels();
-  }, [selectedModel, onModelChange]);
+  }, []); // Run only on mount
 
   // Create model options from available models
   const modelOptions: ModelInfo[] = availableModels.map(model => ({
